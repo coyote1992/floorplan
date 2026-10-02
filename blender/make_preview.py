@@ -31,7 +31,18 @@ for dp, _, fns in os.walk(web):
         dst = os.path.join(OUT, 'assets', 'web', rel)
         os.makedirs(os.path.dirname(dst), exist_ok=True)
         shutil.copy(os.path.join(dp, fn), dst)
-data['model'] = 'assets/web/flat.gltf'
+# artifact hosting serves neither .gltf nor .bin: inline the geometry buffer and keep the JSON as .json
+import base64
+gpath = os.path.join(OUT, 'assets', 'web', 'flat.gltf')
+g = json.load(open(gpath))
+for buf in g['buffers']:
+    if buf.get('uri') and not buf['uri'].startswith('data:'):
+        bp = os.path.join(OUT, 'assets', 'web', buf['uri'])
+        buf['uri'] = 'data:application/octet-stream;base64,' + base64.b64encode(open(bp, 'rb').read()).decode()
+        os.remove(bp)
+json.dump(g, open(os.path.join(OUT, 'assets', 'web', 'flat.json'), 'w'), separators=(',', ':'))
+os.remove(gpath)
+data['model'] = 'assets/web/flat.json'
 os.makedirs(os.path.join(OUT, 'data'))
 json.dump(data, open(os.path.join(OUT, 'data', 'scene.json'), 'w'))
 for f in files:
