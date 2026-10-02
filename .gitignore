@@ -1,0 +1,6 @@
+# downloaded CC0 sources (blender/fetch_assets.sh) and intermediate build output
+assets_src/
+build/
+__pycache__/
+*.blend1
+.DS_Store
