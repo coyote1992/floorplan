@@ -108,11 +108,13 @@ async function load() {
     scene.backgroundRotation.set(0, Math.PI / 2, 0);
     scene.backgroundIntensity = 1.15;
   }).catch(() => null);
-  const draco = new DRACOLoader().setDecoderPath('vendor/three/addons/libs/draco/gltf/').setDecoderConfig({ type: 'wasm' });
-  const gltf = await new GLTFLoader().setDRACOLoader(draco).loadAsync(S.data.model || 'assets/flat.glb', e => {
-    if (e.total) setLoading(0.05 + 0.8 * e.loaded / e.total, `Loading the model… ${Math.round(e.loaded / 1e6)} / ${Math.round(e.total / 1e6)} MB`);
-  });
-  setLoading(0.88, 'Lighting the rooms…');
+  const modelUrl = S.data.model || 'assets/flat.glb';
+  const bytes = await fetchModel(modelUrl, S.data.modelBytes);
+  setLoading(0.86, 'Building the rooms…');
+  const loader = new GLTFLoader();
+  if (!S.data.model) loader.setDRACOLoader(new DRACOLoader().setDecoderPath('vendor/three/addons/libs/draco/gltf/').setDecoderConfig({ type: 'wasm' }));
+  const gltf = await loader.parseAsync(toGlb(bytes), modelUrl.slice(0, modelUrl.lastIndexOf('/') + 1));
+  setLoading(0.92, 'Lighting the rooms…');
   await lmPromise;
   await viewPromise;
   prepare(gltf.scene, lightmaps);
@@ -122,6 +124,63 @@ async function load() {
   $('loading').hidden = true;
   const start = (location.hash || '').replace('#', '');
   setMode(['walk', 'plan', 'overview'].includes(start) ? start : 'overview', true);
+}
+
+// Fetch the model ourselves (with progress) so that nothing is requested from a data: URL;
+// some hosts only allow fetching the page's own files.
+async function fetchModel(url, expected) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`${url} answered ${res.status}`);
+  const total = Number(res.headers.get('content-length')) || expected || 0;
+  if (!res.body || !res.body.getReader) return new Uint8Array(await res.arrayBuffer());
+  const reader = res.body.getReader();
+  const parts = [];
+  let got = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    parts.push(value);
+    got += value.length;
+    const mb = `${(got / 1e6).toFixed(0)}${total ? ' / ' + (total / 1e6).toFixed(0) : ''} MB`;
+    setLoading(0.05 + 0.8 * (total ? Math.min(1, got / total) : 0.5), `Loading the model… ${mb}`);
+  }
+  const out = new Uint8Array(got);
+  let o = 0;
+  for (const p of parts) { out.set(p, o); o += p.length; }
+  return out;
+}
+
+// A .glb passes through. A glTF JSON whose single buffer is an embedded base64 data URI is
+// repacked into a .glb in memory, so the loader never has to fetch the data URI.
+function toGlb(bytes) {
+  if (bytes[0] === 0x67 && bytes[1] === 0x6c && bytes[2] === 0x54 && bytes[3] === 0x46) return bytes.buffer;
+  const json = JSON.parse(new TextDecoder().decode(bytes));
+  const buf = json.buffers && json.buffers[0];
+  if (!buf || !buf.uri || !buf.uri.startsWith('data:') || json.buffers.length !== 1) return bytes.buffer;
+  const b64 = buf.uri.slice(buf.uri.indexOf(',') + 1);
+  const raw = atob(b64);
+  const bin = new Uint8Array(raw.length);
+  for (let i = 0; i < raw.length; i++) bin[i] = raw.charCodeAt(i);
+  delete buf.uri;
+  buf.byteLength = bin.length;
+  const jsonBytes = new TextEncoder().encode(JSON.stringify(json));
+  const jsonLen = Math.ceil(jsonBytes.length / 4) * 4;
+  const binLen = Math.ceil(bin.length / 4) * 4;
+  const total = 12 + 8 + jsonLen + 8 + binLen;
+  const glb = new ArrayBuffer(total);
+  const dv = new DataView(glb);
+  const u8 = new Uint8Array(glb);
+  dv.setUint32(0, 0x46546c67, true);
+  dv.setUint32(4, 2, true);
+  dv.setUint32(8, total, true);
+  dv.setUint32(12, jsonLen, true);
+  dv.setUint32(16, 0x4e4f534a, true);
+  u8.set(jsonBytes, 20);
+  u8.fill(0x20, 20 + jsonBytes.length, 20 + jsonLen);
+  dv.setUint32(20 + jsonLen, binLen, true);
+  dv.setUint32(24 + jsonLen, 0x004e4942, true);
+  u8.set(bin, 28 + jsonLen);
+  return glb;
 }
 
 function prepare(root, lightmaps) {
@@ -574,7 +633,11 @@ requestAnimationFrame(frame);
 
 load().catch(err => {
   console.error(err);
-  $('loadText').textContent = 'The model could not be loaded. Serve this folder over http (for example: python3 -m http.server) and reload.';
+  const why = (err && (err.message || err.type || String(err))) || 'unknown error';
+  const local = location.protocol === 'file:';
+  $('loadText').textContent = local
+    ? 'Open this page through a web server (for example: python3 -m http.server), not as a file.'
+    : `The model could not be loaded (${why}). Reload the page to try again.`;
 });
 
 window.flat = { S, setMode, goRoom, renderer, scene };

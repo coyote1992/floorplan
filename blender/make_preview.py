@@ -43,6 +43,7 @@ for buf in g['buffers']:
 json.dump(g, open(os.path.join(OUT, 'assets', 'web', 'flat.json'), 'w'), separators=(',', ':'))
 os.remove(gpath)
 data['model'] = 'assets/web/flat.json'
+data['modelBytes'] = os.path.getsize(os.path.join(OUT, 'assets', 'web', 'flat.json'))
 os.makedirs(os.path.join(OUT, 'data'))
 json.dump(data, open(os.path.join(OUT, 'data', 'scene.json'), 'w'))
 for f in files:
