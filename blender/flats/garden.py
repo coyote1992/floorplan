@@ -61,7 +61,7 @@ OPENINGS = [
     dict(id='door_wc', kind='door', axis='y', rect=(530, 18, 550, 88), z=(0, 2.0), wall=(534, 546),
          hinge='a0', swing='wc', angle=80, leaf='flush'),
     dict(id='door_bath', kind='door', axis='y', rect=(862, 15, 880, 85), z=(0, 2.0), wall=(866, 876),
-         hinge='a1', swing='bath', angle=88, leaf='flush'),
+         hinge='a1', swing='bath', angle=172, leaf='flush'),   # folded back against the wall
     dict(id='door_bedroom', kind='door', axis='y', rect=(246, 210, 264, 290), z=(0, 2.05), wall=(250, 260),
          hinge='a0', swing='bedroom', angle=82, leaf='flush'),
     dict(id='door_living', kind='door', axis='y', rect=(661, 220, 679, 300), z=(0, 2.05), wall=(665, 675),
@@ -82,9 +82,9 @@ SPAWNS = {
     'kitchen': (725, 432, -2.85),
     'bedroom': (200, 250, 2.65),
     'study':   (1110, 585, 0.80),
-    'closet':  (150, 215, 0.0),
+    'closet':  (135, 210, 0.0),                   # from the bedroom, looking through the arch into the closet
     'hall':    (731, 45, 3.1416),
-    'bath':    (912, 118, -1.85),
+    'bath':    (918, 62, -2.25),
     'wc':      (515, 53, 1.5708),
 }
 

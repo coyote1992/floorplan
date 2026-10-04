@@ -766,6 +766,21 @@ def render_settings():
 
 
 # ---------------------------------------------------------------- scene description for the web viewer
+def passages():
+    """Walkable spans through the wall thickness at open doors and arches (the viewer only lets you
+    stand inside a room or in one of these)."""
+    out = []
+    for op in OPENINGS:
+        if op['z'][0] > 0 or op['kind'] not in ('door', 'arch', 'balcony'):
+            continue
+        if op['kind'] != 'arch' and op.get('angle', 0) == 0:
+            continue
+        r, (w0, w1) = op['rect'], op['wall']
+        q = (r[0], w0, r[2], w1) if op['axis'] == 'x' else (w0, r[1], w1, r[3])
+        out.append([round(X(q[0]), 3), round(-Y(q[1]), 3), round(X(q[2]), 3), round(-Y(q[3]), 3)])
+    return out
+
+
 def write_scene_json():
     rooms = []
     for k in ROOM_ORDER:
@@ -816,6 +831,7 @@ def write_scene_json():
     data = dict(id=FLAT, scale=S, ceiling=H, netArea=round(net_area(), 1), rooms=rooms, walls=cols, furniture=furn,
                 bounds=[X(bx0), -Y(by0), X(bx1), -Y(by1)], viewRotation=flat.VIEW_ROTATION, **flat.META,
                 model=f'assets/{FLAT}/flat.glb', view=f'assets/{FLAT}/view.jpg')
+    data['passages'] = passages()
     if hasattr(flat, 'OUTSIDE_PROBE'):          # the room whose light the viewer uses for the outside of the walls
         data['outsideProbe'] = flat.OUTSIDE_PROBE
     out = os.path.join(ROOT, 'data', f'{FLAT}.json')

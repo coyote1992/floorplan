@@ -51,7 +51,7 @@ const S = {
   keys: Object.create(null), joy: { x: 0, y: 0 }, tween: null,
 };
 let ceilings = [], roomMeshes = {}, viewTex = null, bgColor = new THREE.Color();
-let walls = [], furniture = [];
+let walls = [], furniture = [], passages = [];
 
 /* ------------------------------------------------------------------ helpers */
 function cssColor(name) {
@@ -139,8 +139,10 @@ function disposeFlat() {
   roomMeshes = {};
   walls = [];
   furniture = [];
+  passages = [];
   S.room = null;
   S.tween = null;
+  S.hold = null;
   S.orbitInit = false;
   S.pos.set(0, 0, 0);
   S.vel.set(0, 0);
@@ -286,6 +288,7 @@ function prepare(root, lightmaps) {
     (roomMeshes[key] = roomMeshes[key] || []).push(o);
   });
   walls = S.data.walls.map(w => ({ x0: w[0], z0: w[1], x1: w[2], z1: w[3] }));
+  passages = S.data.passages || [];
   furniture = S.data.furniture.map(w => ({ x0: w[0], z0: w[1], x1: w[2], z1: w[3], name: w[4] }));
 }
 
@@ -527,6 +530,8 @@ function resetPlan() {
 function placeAt(r, instant) {
   const [x, z, yaw] = r.spawn;
   const [fx, fz] = freeSpot(x, z);
+  S.hold = { room: r, x: fx, z: fz };
+  if (S.room !== r) { S.room = r; updateWhere(); }
   if (instant || reduceMotion) {
     S.pos.set(fx, 0, fz);
     S.yaw = yaw;
@@ -566,7 +571,12 @@ function updateWhere() {
 function blocked(x, z) {
   for (const b of walls) if (x > b.x0 - RADIUS && x < b.x1 + RADIUS && z > b.z0 - RADIUS && z < b.z1 + RADIUS) return true;
   for (const b of furniture) if (x > b.x0 - RADIUS * 0.6 && x < b.x1 + RADIUS * 0.6 && z > b.z0 - RADIUS * 0.6 && z < b.z1 + RADIUS * 0.6) return true;
-  return !roomAt(x, z);
+  return !roomAt(x, z) && !inPassage(x, z);
+}
+// open doorways and arches: the strip inside the wall's thickness, between two rooms
+function inPassage(x, z) {
+  for (const q of passages) if (x >= q[0] - 0.02 && x <= q[2] + 0.02 && z >= q[1] - 0.02 && z <= q[3] + 0.02) return true;
+  return false;
 }
 function freeSpot(x, z) {
   if (!blocked(x, z)) return [x, z];
@@ -736,8 +746,10 @@ function stepWalk(dt) {
   }
   camWalk.position.set(S.pos.x, EYE, S.pos.z);
   camWalk.rotation.set(S.pitch, S.yaw, 0);
-  const r = roomAt(S.pos.x, S.pos.z);
-  if (r !== S.room) { S.room = r; updateWhere(); }
+  // a room's viewpoint may stand just outside it (the closet is seen from the bedroom): keep its name until you walk off
+  if (S.hold && !S.tween && Math.hypot(S.pos.x - S.hold.x, S.pos.z - S.hold.z) > 0.35) S.hold = null;
+  const r = S.hold && !S.tween ? S.hold.room : roomAt(S.pos.x, S.pos.z);   // inside a doorway: keep the room we came from
+  if (r && r !== S.room) { S.room = r; updateWhere(); }
 }
 requestAnimationFrame(frame);
 
@@ -757,4 +769,4 @@ addEventListener('hashchange', () => {
 });
 boot().catch(showError);
 
-window.flat = { S, setMode, goRoom, renderer, scene, loadFlat, get current() { return current; } };
+window.flat = { S, setMode, goRoom, moveBy, renderer, scene, loadFlat, get current() { return current; } };
