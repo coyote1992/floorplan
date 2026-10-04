@@ -1,5 +1,5 @@
 """Re-export the baked flat without re-baking.
-   blender -b build/flat_baked.blend -P blender/export.py -- [--separate] [--no-draco] [--out assets/flat.glb]
+   FLAT=<id> blender -b build/<id>/flat_baked.blend -P blender/export.py -- [--separate] [--no-draco] [--out assets/flat.glb]
 --separate writes .gltf + .bin + image files (each file small, no WebAssembly decoder needed)."""
 import sys
 import os
@@ -9,7 +9,8 @@ argv = sys.argv[sys.argv.index('--') + 1:] if '--' in sys.argv else []
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 separate = '--separate' in argv
 draco = '--no-draco' not in argv and not separate
-out = argv[argv.index('--out') + 1] if '--out' in argv else os.path.join(ROOT, 'assets', 'flat.gltf' if separate else 'flat.glb')
+FLAT = os.environ.get('FLAT', 'riverview')
+out = argv[argv.index('--out') + 1] if '--out' in argv else os.path.join(ROOT, 'assets', FLAT, 'flat.gltf' if separate else 'flat.glb')
 out = os.path.abspath(out)
 os.makedirs(os.path.dirname(out), exist_ok=True)
 

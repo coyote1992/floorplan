@@ -3,8 +3,9 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>River-view Flat</title>
-<meta name="description" content="Walk through a 1½-room flat with a loggia and a river view, reconstructed in 3D from the listing floor plan and photos.">
+<title>Flat Portfolio</title>
+<meta name="description" content="Walk through two flats in 3D: a river-view flat with a loggia and a garden flat, each reconstructed from its floor plan and photos.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%231f5a55'/%3E%3Cpath d='M8 24V13l8-6 8 6v11h-6v-6h-4v6z' fill='%23f4faf8'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,650&family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap">
@@ -60,6 +61,20 @@ h1 { font: 650 34px/1.02 var(--f-display); letter-spacing: -.02em; margin: 10px 
 .stat b { display: block; font: 500 26px/1.1 var(--f-display); letter-spacing: -.01em; font-variant-numeric: tabular-nums }
 .stat b small { font: 500 13px var(--f-body); color: var(--muted); margin-left: 3px }
 .stat > span { font-size: 12px; color: var(--muted) }
+.flats { display: grid; gap: 8px; padding-bottom: 18px; border-bottom: 1px solid var(--line) }
+.flat-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px }
+.flat-tab { display: grid; gap: 1px; text-align: left; padding: 0 0 9px; border-radius: 10px; cursor: pointer; overflow: hidden;
+  border: 1px solid var(--line); background: none; min-width: 0; transition: border-color .15s, background .15s }
+.flat-tab img { display: block; width: 100%; aspect-ratio: 2 / 1; object-fit: cover; background: var(--chip); margin-bottom: 7px;
+  filter: saturate(.75); opacity: .85; transition: filter .2s, opacity .2s }
+.flat-tab b { font: 600 13.5px/1.2 var(--f-display); padding-inline: 9px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.flat-tab span { font: 400 11.5px var(--f-body); color: var(--muted); font-variant-numeric: tabular-nums; padding-inline: 9px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis }
+.flat-tab:hover { border-color: var(--accent) }
+.flat-tab:hover img, .flat-tab[aria-selected="true"] img { filter: none; opacity: 1 }
+.flat-tab[aria-selected="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent);
+  background: color-mix(in srgb, var(--accent) 8%, transparent) }
+.flat-tab[aria-selected="true"] b { color: var(--accent) }
 .rooms h2 { font: 500 11px/1 var(--f-data); letter-spacing: .14em; text-transform: uppercase; color: var(--muted); margin: 0 0 8px }
 .rooms ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px }
 .rooms li button { width: 100%; display: grid; grid-template-columns: 1fr auto; align-items: baseline; gap: 8px;
@@ -130,7 +145,12 @@ kbd { font: 500 11px var(--f-data); padding: 1px 5px; border: 1px solid var(--li
   .stage { grid-row: 1 }
   .side { grid-row: 2; border-right: 0; border-top: 1px solid var(--line); max-height: 46vh; padding: 14px 16px 16px;
     padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px)); gap: 14px; transition: max-height .25s }
-  .side.collapsed { max-height: calc(58px + env(safe-area-inset-bottom, 0px)); overflow: hidden }
+  .side.collapsed { max-height: calc(128px + env(safe-area-inset-bottom, 0px)); overflow: hidden }
+  .flats { padding-bottom: 10px; gap: 6px }
+  .flats .eyebrow { display: none }
+  .flat-tab { padding: 7px 0 }
+  .flat-tab img { display: none }
+  .flat-tab b { font-size: 14px }
   .sheet-toggle { display: flex; align-items: center; justify-content: space-between; gap: 10px; border: 0; background: none;
     padding: 0; cursor: pointer; text-align: left; width: 100% }
   .sheet-toggle b { font: 650 19px var(--f-display) }
@@ -154,28 +174,27 @@ kbd { font: 500 11px var(--f-data); padding: 1px 5px; border: 1px solid var(--li
 <body>
 <div class="app">
   <aside class="side" id="side">
+    <nav class="flats" aria-label="Portfolio">
+      <div class="eyebrow">Portfolio</div>
+      <div class="flat-tabs" id="flatTabs" role="tablist"></div>
+    </nav>
     <button class="sheet-toggle" id="sheetToggle" aria-expanded="true" aria-controls="side">
-      <b id="sheetTitle">River-view flat</b><span id="sheetArea">48.6 m² · rooms ▾</span>
+      <b id="sheetTitle">Loading…</b><span id="sheetArea">rooms ▾</span>
     </button>
     <div class="head">
-      <div class="eyebrow">3D walkthrough</div>
-      <h1 id="title">River-view flat</h1>
-      <p class="lede" id="lede">1½ rooms on a high floor of a panel building, with a loggia over the river and the hills.</p>
+      <div class="eyebrow" id="eyebrow">3D walkthrough</div>
+      <h1 id="title">Loading…</h1>
+      <p class="lede" id="lede"></p>
     </div>
-    <div class="stats">
-      <div class="stat"><b><span id="statArea">48.6</span><small>m²</small></b><span>Interior, estimated</span></div>
-      <div class="stat"><b><span id="statCeil">2.60</span><small>m</small></b><span>Ceiling height</span></div>
-      <div class="stat"><b><span id="statLoggia">2.9</span><small>m²</small></b><span>Loggia</span></div>
-      <div class="stat"><b>1½</b><span>Rooms (szoba + félszoba)</span></div>
-    </div>
+    <div class="stats" id="stats"></div>
     <nav class="rooms" aria-label="Rooms">
       <h2>Explore the rooms</h2>
       <ul id="roomList"></ul>
     </nav>
-    <p class="note">Room sizes are measured from the listing floor plan. The plan has no scale bar, so sizes may be off by a few percent.</p>
+    <p class="note" id="sizeNote"></p>
     <footer>
       <button class="linkbtn" id="planBtn">Show the floor plan</button>
-      <p class="note">Walls, doors and windows follow the listing plan. Furniture is modelled from photos of the flat, and the daylight is baked with Cycles.</p>
+      <p class="note">Walls, doors and windows follow the floor plan. Furniture is modelled from photos of each flat, and the daylight is baked with Cycles.</p>
     </footer>
   </aside>
 

@@ -1,6 +1,6 @@
 """Lightmap bake + glTF export.
-   blender -b build/flat.blend -P blender/bake.py -- [--rooms living,bedroom] [--samples 128] [--skip-bake]
-Outputs web/assets/flat.glb, web/assets/lm_<room>.jpg and updates web/data/scene.json."""
+   FLAT=<id> blender -b build/<id>/flat.blend -P blender/bake.py -- [--rooms living,bedroom] [--samples 128] [--skip-bake]
+Outputs assets/<id>/flat.glb, assets/<id>/lm_<room>.jpg and updates data/<id>.json."""
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -11,11 +11,12 @@ import math
 import time
 import numpy as np
 from math import radians
-from plan import ROOMS
+from plan import ROOMS, FLAT
+import plan as flat
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-ASSETS = os.path.join(ROOT, 'assets')
-LMDIR = os.path.join(ROOT, 'build', 'lightmaps')
+ASSETS = os.path.join(ROOT, 'assets', FLAT)
+LMDIR = os.path.join(ROOT, 'build', FLAT, 'lightmaps')
 os.makedirs(ASSETS, exist_ok=True)
 os.makedirs(LMDIR, exist_ok=True)
 
@@ -32,7 +33,8 @@ def arg(name, default=None):
 SAMPLES = int(arg('--samples', 128))
 ROOMS_TO_BAKE = arg('--rooms', None)
 SKIP_BAKE = bool(arg('--skip-bake', False))
-SIZES = {'living': 2048, 'bedroom': 2048, 'hall': 2048, 'kitchen': 1536, 'bath': 1024, 'wc': 1024, 'loggia': 1024}
+SIZES = {k: (2048 if flat.room_area(k) > 8 else 1536 if flat.room_area(k) > 3.5 else 1024) for k in ROOMS}
+SIZES.update(getattr(flat, 'LM_SIZES', {}))
 ARCH_DENSITY = 2.5   # texel density multiplier for walls / floors / ceilings
 LM_MAX = 6.0          # irradiance mapped to 1.0 in the 8-bit lightmaps (sRGB encoded)
 
@@ -234,7 +236,7 @@ for m in bpy.data.materials:
             if n:
                 m.node_tree.nodes.remove(n)
 
-bpy.ops.wm.save_as_mainfile(filepath=os.path.join(ROOT, 'build', 'flat_baked.blend'))
+bpy.ops.wm.save_as_mainfile(filepath=os.path.join(ROOT, 'build', FLAT, 'flat_baked.blend'))
 
 # ---------------------------------------------------------------- export
 for o in bpy.data.objects:
@@ -248,12 +250,12 @@ bpy.ops.export_scene.gltf(
     export_draco_position_quantization=14, export_draco_normal_quantization=10,
     export_draco_texcoord_quantization=16, export_draco_generic_quantization=12)
 
-sj = os.path.join(ROOT, 'data', 'scene.json')
+sj = os.path.join(ROOT, 'data', f'{FLAT}.json')
 data = json.load(open(sj))
 lm = data.get('lightmaps', {})
 for r in ROOMS:
     if os.path.exists(os.path.join(ASSETS, f'lm_{r}.jpg')):
-        lm[r] = dict(file=f'assets/lm_{r}.jpg', **(info.get(r) or lm.get(r, {})))
+        lm[r] = dict(file=f'assets/{FLAT}/lm_{r}.jpg', **{k: v for k, v in (info.get(r) or lm.get(r, {})).items() if k != 'file'})
 data['lightmaps'] = lm
 data['lmMax'] = LM_MAX
 json.dump(data, open(sj, 'w'), indent=1)

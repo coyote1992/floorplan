@@ -11,7 +11,7 @@ from math import radians, pi, sin, cos
 from mathutils import Vector
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-OUT = os.environ.get('PANO_OUT', os.path.join(ROOT, 'assets', 'view.jpg'))
+OUT = os.environ.get('PANO_OUT', os.path.join(ROOT, 'assets', 'riverview', 'view.jpg'))
 RES = int(os.environ.get('PANO_RES', '6144'))
 SAMPLES = int(os.environ.get('PANO_SAMPLES', '64'))
 FLOOR_HEIGHT = 30.0          # height of the flat's floor above the park

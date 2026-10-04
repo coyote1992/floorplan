@@ -161,6 +161,81 @@ def floral(w=1024, h=1024):
     return out
 
 
+def dreamcatcher(w=768, h=512):
+    """Canvas print: a dreamcatcher on a warm sand background (bedroom wall art, flat 2)."""
+    y, x = np.mgrid[0:h, 0:w].astype(np.float32)
+    out = np.ones((h, w, 3), np.float32) * np.array([0.86, 0.80, 0.70])
+    out *= (0.92 + 0.12 * (y / h))[..., None]
+    sun = np.exp(-(((x - w * 0.62) / (w * 0.35)) ** 2 + ((y - h * 0.55) / (h * 0.5)) ** 2))
+    out += sun[..., None] * np.array([0.10, 0.07, 0.03])
+    cx, cy, r = w * 0.42, h * 0.36, h * 0.27
+    d = np.sqrt((x - cx) ** 2 + (y - cy) ** 2)
+    ang = np.arctan2(y - cy, x - cx)
+    ring = np.abs(d - r) < 3.2
+    web = (d < r) & ((np.abs(np.sin(ang * 8)) < 0.035) | (np.abs(np.sin(d / r * 22)) < 0.05))
+    lace = (d < r * 0.55) & (np.abs(np.sin(ang * 16 + d * 0.12)) < 0.12)
+    out[web | lace] = np.array([0.95, 0.94, 0.90])
+    out[ring] = np.array([0.55, 0.42, 0.30])
+    for k, dx in enumerate((-0.6, 0.0, 0.6)):
+        sx = cx + dx * r
+        cord = (np.abs(x - sx) < 1.5) & (y > cy + r * (0.8 if dx else 1.0)) & (y < cy + r * 1.9)
+        out[cord] = np.array([0.55, 0.42, 0.30])
+        fy = cy + r * 2.2 + (k % 2) * 25
+        feather = ((x - sx) / 14) ** 2 + ((y - fy) / 55) ** 2 < 1
+        col = np.array([[0.38, 0.62, 0.66], [0.90, 0.86, 0.80], [0.30, 0.52, 0.60]][k])
+        out[feather] = col * (0.85 + 0.15 * np.sin(y[feather] * 0.6))[..., None]
+    return np.clip(out * (1 + RNG.normal(0, 0.015, (h, w, 1))), 0, 1)
+
+
+def lemons(w=360, h=480, bg=(0.97, 0.96, 0.92)):
+    """Small print: lemons on a branch."""
+    y, x = np.mgrid[0:h, 0:w].astype(np.float32)
+    out = np.ones((h, w, 3), np.float32) * np.array(bg)
+    leaf = np.array([0.36, 0.52, 0.30])
+    for lx, ly, a in ((0.30, 0.30, 0.6), (0.70, 0.45, -0.5), (0.45, 0.68, 0.9), (0.62, 0.22, -0.2)):
+        ux, uy = x - lx * w, y - ly * h
+        lu = ux * np.cos(a) + uy * np.sin(a)
+        lv = -ux * np.sin(a) + uy * np.cos(a)
+        out[(lu / 60) ** 2 + (lv / 20) ** 2 < 1] = leaf
+    for lx, ly in ((0.42, 0.42), (0.58, 0.58), (0.38, 0.62)):
+        m = ((x - lx * w) / 52) ** 2 + ((y - ly * h) / 40) ** 2 < 1
+        shade = 0.85 + 0.15 * np.clip(1 - (y - ly * h + 20) / 80, 0, 1)
+        out[m] = np.array([0.96, 0.80, 0.18]) * shade[m][..., None]
+    return np.clip(out, 0, 1)
+
+
+def art_print(w=360, h=480, seed=0):
+    """Abstract print: arches and dots in muted tones."""
+    r = np.random.default_rng(seed)
+    y, x = np.mgrid[0:h, 0:w].astype(np.float32)
+    out = np.ones((h, w, 3), np.float32) * np.array([0.94, 0.92, 0.88])
+    cols = [np.array(c) for c in ((0.20, 0.24, 0.30), (0.62, 0.66, 0.70), (0.80, 0.70, 0.55), (0.30, 0.36, 0.45))]
+    cx = w / 2
+    for i, rad in enumerate((0.42, 0.34, 0.26, 0.18)):
+        d = np.sqrt((x - cx) ** 2 + (y - h * 0.62) ** 2)
+        m = (d < rad * w) & (y < h * 0.62) | ((np.abs(x - cx) < rad * w) & (y >= h * 0.62) & (y < h * 0.85))
+        out[m] = cols[i % 4]
+    for _ in range(5):
+        px, py, pr = r.uniform(0.1, 0.9) * w, r.uniform(0.05, 0.3) * h, r.uniform(8, 18)
+        out[(x - px) ** 2 + (y - py) ** 2 < pr ** 2] = cols[r.integers(0, 4)]
+    return out
+
+
+def sign_ocean(w=240, h=720):
+    """Hallway sign: whitewashed wood with blue lettering bands."""
+    y, x = np.mgrid[0:h, 0:w].astype(np.float32)
+    out = np.ones((h, w, 3), np.float32) * np.array([0.90, 0.88, 0.84])
+    out *= (0.95 + 0.05 * np.sin(x * 0.35 + np.sin(y * 0.05) * 2))[..., None]
+    for i, (y0, hh, c) in enumerate(((60, 28, (0.25, 0.45, 0.62)), (130, 18, (0.30, 0.32, 0.35)), (170, 18, (0.30, 0.32, 0.35)),
+                                     (230, 34, (0.25, 0.45, 0.62)), (300, 18, (0.30, 0.32, 0.35)), (360, 26, (0.25, 0.45, 0.62)),
+                                     (430, 18, (0.30, 0.32, 0.35)), (480, 18, (0.30, 0.32, 0.35)))):
+        m = (y > y0) & (y < y0 + hh) & (x > 30) & (x < w - 30) & (np.sin(x * 0.9) > -0.6)
+        out[m] = c
+    d = np.sqrt((x - w / 2) ** 2 + (y - 600) ** 2)
+    out[(np.abs(d - 55) < 3) | ((np.abs(x - w / 2) < 2) & (d < 55)) | ((np.abs(y - 600) < 2) & (d < 55))] = (0.3, 0.32, 0.35)
+    return out
+
+
 WEB = os.path.join(GEN, 'web')
 os.makedirs(WEB, exist_ok=True)
 
@@ -184,9 +259,9 @@ def web(path, size, noncolor=False, quality=84):
     return out
 
 
-BIG = ('parquet', 'tile_floor', 'tile_bath_floor', 'tile_loggia', 'tile_kitchen', 'tile_bath', 'tile_wc',
+BIG = ('parquet', 'laminate', 'tile_beige', 'tile_floor', 'tile_bath_floor', 'tile_loggia', 'tile_kitchen', 'tile_bath', 'tile_wc',
        'rug_living', 'rug_hall', 'marble', 'floral', 'poster')
-KEEP_ROUGH = ('parquet', 'tile_floor', 'tile_bath_floor', 'tile_loggia', 'marble')
+KEEP_ROUGH = ('parquet', 'laminate', 'tile_floor', 'tile_bath_floor', 'tile_loggia', 'marble')
 
 
 def webify(T):
@@ -289,4 +364,45 @@ def ensure():
     T['rug_hall'] = dict(color=os.path.join(GEN, 'rug_hall.jpg'), normal=acg('Fabric030')['normal'])
     T['poster'] = dict(color=os.path.join(GEN, 'poster.jpg'))
     T['floral'] = dict(color=os.path.join(GEN, 'floral.jpg'))
+
+    # ---------------- flat 2 (garden flat)
+    src = acg('WoodFloor051')
+    if not have('laminate_color.jpg'):
+        c = read(src['color'])
+        g = c.mean(axis=2, keepdims=True)
+        c = g + (c - g) * 0.75
+        write('laminate_color.jpg', np.clip(c * np.array([1.45, 1.30, 1.05]) + 0.06, 0, 1))
+        r = read(src['rough'])
+        write('laminate_rough.jpg', 0.32 + r * 0.30)
+    T['laminate'] = dict(color=os.path.join(GEN, 'laminate_color.jpg'), rough=os.path.join(GEN, 'laminate_rough.jpg'), normal=src['normal'])
+    wood('wood_beech', 'Wood049', (1.22, 1.00, 0.76), 0.05, 0.62, 0.7, 0.1)         # beech doors / skirting
+    wood('wood_spruce', 'Wood068', (1.16, 1.06, 0.88), 0.07, 0.75, 0.75, 0.1)       # living-room wall unit (pale spruce)
+    wood('wood_walnut', 'Wood028', (0.95, 0.82, 0.70), 0.0, 1.0, 0.7, 0.1)          # dark wardrobe / desk
+    wood('plywood', 'Wood068', (1.15, 1.08, 0.95), 0.05, 0.7, 0.8, 0.1)             # bathroom cabinet
+    wood('worktop_grey', 'Wood058', (0.55, 0.53, 0.52), 0.02, 0.15, 0.6, 0.1)       # kitchen worktop
+    fabric('fab_teal', 'Fabric023', (0.06, 0.95, 1.12), 0.02, 1.0)
+    fabric('fab_slate', 'Fabric030', (0.80, 0.84, 0.92), 0.03, 1.0)
+    fabric('fab_navy', 'Fabric036', (0.16, 0.20, 0.42), 0.0, 1.0)
+    fabric('fab_brown', 'Fabric030', (0.22, 0.17, 0.14), 0.0, 1.0)
+    fabric('fab_orange', 'Fabric062', (1.25, 0.70, 0.30), 0.0, 0.8)
+    fabric('fab_peach', 'Fabric062', (1.20, 0.82, 0.70), 0.0, 0.8)
+    fabric('fab_blue', 'Fabric036', (0.30, 0.45, 0.62), 0.0, 1.0)
+    fabric('fab_rugdark', 'Fabric030', (0.26, 0.27, 0.29), 0.0, 1.0)
+    if not have('tile_beige_color.jpg'):
+        c, n = tile_layout(marble, (1000, 1000), 5, 5, 4, (0.78, 0.76, 0.72), tint=(0.97, 0.94, 0.90), jitter=0.025)
+        g = c.mean(axis=2, keepdims=True)
+        write('tile_beige_color.jpg', g * 0.5 + c * 0.5 + 0.04)
+        write('tile_beige_normal.jpg', n)
+        c, n = tile_layout(marble, (1000, 1000), 3, 3, 4, (0.66, 0.66, 0.66), tint=(0.86, 0.86, 0.86), jitter=0.04)
+        write('tile_grey_floor_color.jpg', c)
+        write('tile_grey_floor_normal.jpg', n)
+    T['tile_beige'] = dict(color=os.path.join(GEN, 'tile_beige_color.jpg'), normal=os.path.join(GEN, 'tile_beige_normal.jpg'))
+    T['tile_grey_floor'] = dict(color=os.path.join(GEN, 'tile_grey_floor_color.jpg'), normal=os.path.join(GEN, 'tile_grey_floor_normal.jpg'))
+    for name, fn in (('dreamcatcher', dreamcatcher), ('lemons', lemons), ('art_arch', art_print), ('sign_ocean', sign_ocean)):
+        if not have(name + '.jpg'):
+            write(name + '.jpg', fn())
+        T[name] = dict(color=os.path.join(GEN, name + '.jpg'))
+    if not have('lemons_blue.jpg'):
+        write('lemons_blue.jpg', lemons(bg=(0.32, 0.45, 0.66)))
+    T['lemons_blue'] = dict(color=os.path.join(GEN, 'lemons_blue.jpg'))
     return webify(T)

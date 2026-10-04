@@ -65,7 +65,7 @@ function roomAt(x, z) {
   if (!S.data) return null;
   let hit = null;
   for (const r of S.data.rooms) for (const q of r.rects) {
-    if (x >= q[0] - 0.02 && x <= q[2] + 0.02 && z >= q[1] - 0.02 && z <= q[3] + 0.02) { if (!hit || r.id === 'loggia') hit = r; }
+    if (x >= q[0] - 0.02 && x <= q[2] + 0.02 && z >= q[1] - 0.02 && z <= q[3] + 0.02) { if (!hit || r.outdoor) hit = r; }
   }
   return hit;
 }
@@ -82,48 +82,128 @@ function patchLightmapped(m) {
   m.customProgramCacheKey = () => 'lightmapped';
 }
 
-/* ------------------------------------------------------------------ loading */
-async function load() {
-  setLoading(0.02, 'Loading the floor plan…');
-  S.data = await (await fetch('data/scene.json')).json();
+/* ------------------------------------------------------------------ loading: a portfolio of flats */
+let flats = [], current = null, root = null, loadSeq = 0, owned = [];
+const MODES = ['overview', 'walk', 'plan'];
+
+function parseHash() {
+  const toks = (location.hash || '').replace('#', '').split('.').filter(Boolean);
+  return [toks.find(t => flats.some(f => f.id === t)), toks.find(t => MODES.includes(t))];
+}
+
+async function boot() {
+  setLoading(0.01, 'Loading the portfolio…');
+  flats = (await (await fetch('data/flats.json')).json()).flats;
+  buildTabs();
+  const [flat, mode] = parseHash();
+  await loadFlat(flat || flats[0].id, mode || 'overview');
+}
+
+function buildTabs() {
+  const box = $('flatTabs');
+  box.innerHTML = '';
+  for (const f of flats) {
+    const b = document.createElement('button');
+    b.className = 'flat-tab';
+    b.setAttribute('role', 'tab');
+    b.dataset.flat = f.id;
+    b.innerHTML = '<img alt=""><b></b><span></span>';
+    const img = b.querySelector('img');
+    if (f.thumb) { img.src = f.thumb; img.loading = 'lazy'; } else img.remove();
+    b.querySelector('b').textContent = f.title;
+    b.querySelector('span').textContent = f.summary;
+    b.addEventListener('click', () => { if (f.id !== current) loadFlat(f.id, 'overview').catch(showError); });
+    box.appendChild(b);
+  }
+}
+
+function markTabs() {
+  document.querySelectorAll('.flat-tab').forEach(b => b.setAttribute('aria-selected', String(b.dataset.flat === current)));
+}
+
+function disposeFlat() {
+  if (root) {
+    scene.remove(root);
+    root.traverse(o => {
+      if (!o.isMesh) return;
+      o.geometry.dispose();
+      for (const k of ['map', 'normalMap', 'roughnessMap', 'metalnessMap', 'emissiveMap', 'aoMap']) if (o.material[k]) o.material[k].dispose();
+      o.material.dispose();
+    });
+  }
+  for (const t of owned) t.dispose();
+  owned = [];
+  root = null;
+  viewTex = null;
+  ceilings = [];
+  roomMeshes = {};
+  walls = [];
+  furniture = [];
+  S.room = null;
+  S.tween = null;
+  S.orbitInit = false;
+  S.pos.set(0, 0, 0);
+  S.vel.set(0, 0);
+}
+
+async function loadFlat(id, mode) {
+  const seq = ++loadSeq;
+  const entry = flats.find(f => f.id === id) || flats[0];
+  current = entry.id;
+  markTabs();
+  $('loading').hidden = false;
+  setLoading(0.02, `Loading ${entry.title.toLowerCase()}…`);
+  disposeFlat();
+  const data = await (await fetch(entry.data)).json();
+  if (seq !== loadSeq) return;
+  S.data = data;
   buildUI();
   const texLoader = new THREE.TextureLoader();
-  const lmEntries = Object.entries(S.data.lightmaps || {});
   const lightmaps = {};
-  let done = 0;
-  const lmPromise = Promise.all(lmEntries.map(async ([room, info]) => {
+  const lmPromise = Promise.all(Object.entries(data.lightmaps || {}).map(async ([room, info]) => {
     const t = await texLoader.loadAsync(info.file);
     t.flipY = false;
     t.colorSpace = THREE.SRGBColorSpace;
     t.channel = 1;
     t.anisotropy = 4;
     lightmaps[room] = t;
-    done++;
   }));
-  const viewPromise = texLoader.loadAsync('assets/view.jpg').then(t => {
+  const viewPromise = texLoader.loadAsync(data.view || 'assets/view.jpg').then(t => {
     t.mapping = THREE.EquirectangularReflectionMapping;
     t.colorSpace = THREE.SRGBColorSpace;
-    viewTex = t;
-    // the Blender panorama is centred on plan-north (-Z here); rotate it so the river lies outside the windows
-    scene.backgroundRotation.set(0, Math.PI / 2, 0);
-    scene.backgroundIntensity = 1.15;
+    return t;
   }).catch(() => null);
-  const modelUrl = S.data.model || 'assets/flat.glb';
-  const bytes = await fetchModel(modelUrl, S.data.modelBytes);
+  const modelUrl = data.model || 'assets/flat.glb';
+  const bytes = await fetchModel(modelUrl, data.modelBytes);
+  if (seq !== loadSeq) return;
   setLoading(0.86, 'Building the rooms…');
-  const loader = new GLTFLoader();
-  if (!S.data.model) loader.setDRACOLoader(new DRACOLoader().setDecoderPath('vendor/three/addons/libs/draco/gltf/').setDecoderConfig({ type: 'wasm' }));
+  const loader = new GLTFLoader()
+    .setDRACOLoader(new DRACOLoader().setDecoderPath('vendor/three/addons/libs/draco/gltf/').setDecoderConfig({ type: 'wasm' }));
   const gltf = await loader.parseAsync(toGlb(bytes), modelUrl.slice(0, modelUrl.lastIndexOf('/') + 1));
   setLoading(0.92, 'Lighting the rooms…');
   await lmPromise;
-  await viewPromise;
+  const view = await viewPromise;
+  if (seq !== loadSeq) {
+    gltf.scene.traverse(o => { if (o.isMesh) { o.geometry.dispose(); o.material.dispose(); } });
+    for (const t of Object.values(lightmaps)) t.dispose();
+    if (view) view.dispose();
+    return;
+  }
+  owned.push(...Object.values(lightmaps));
+  if (view) {
+    owned.push(view);
+    viewTex = view;
+    // each panorama is centred on the windows' side of its flat
+    scene.backgroundRotation.set(0, data.viewRotation ?? Math.PI / 2, 0);
+    scene.backgroundIntensity = 1.15;
+  }
   prepare(gltf.scene, lightmaps);
-  scene.add(gltf.scene);
+  root = gltf.scene;
+  scene.add(root);
   buildProbes();
   setLoading(1, 'Ready');
   $('loading').hidden = true;
-  const start = (location.hash || '').replace('#', '');
-  setMode(['walk', 'plan', 'overview'].includes(start) ? start : 'overview', true);
+  setMode(MODES.includes(mode) ? mode : 'overview', true);
 }
 
 // Fetch the model ourselves (with progress) so that nothing is requested from a data: URL;
@@ -221,11 +301,13 @@ function buildProbes() {
     cube.position.set(c.x, 1.35, c.z);
     cube.update(renderer, scene);
     probes[r.id] = pmrem.fromCubemap(rt.texture).texture;
+    owned.push(probes[r.id]);
   }
   const centers = S.data.rooms.map(r => [r.id, roomCenter(r)]);
   for (const [key, list] of Object.entries(roomMeshes)) {
     for (const o of list) {
       let id = key;
+      if (!probes[id] && probes[S.data.outsideProbe]) id = S.data.outsideProbe;   // outer walls, wall tops
       if (!probes[id]) {
         const p = new THREE.Vector3();
         o.getWorldPosition(p);
@@ -243,11 +325,24 @@ function buildProbes() {
 /* ------------------------------------------------------------------ UI */
 function buildUI() {
   const d = S.data;
-  const loggia = d.rooms.find(r => r.id === 'loggia');
-  $('statArea').textContent = d.netArea.toFixed(1);
-  $('statCeil').textContent = d.ceiling.toFixed(2);
-  if (loggia) $('statLoggia').textContent = loggia.area.toFixed(1);
+  $('eyebrow').textContent = d.eyebrow || '3D walkthrough';
+  $('title').textContent = d.title;
+  $('lede').textContent = d.lede || '';
+  $('sizeNote').textContent = d.note || '';
+  $('sheetTitle').textContent = d.title;
   $('sheetArea').textContent = `${d.netArea.toFixed(1)} m² · rooms`;
+  document.title = `${d.title} · 3D walkthrough`;
+  const stats = $('stats');
+  stats.innerHTML = '';
+  for (const [value, unit, label] of d.stats || []) {
+    const div = document.createElement('div');
+    div.className = 'stat';
+    div.innerHTML = '<b><span></span><small></small></b><span></span>';
+    div.querySelector('b > span').textContent = value;
+    div.querySelector('small').textContent = unit;
+    div.querySelector('.stat > span').textContent = label;
+    stats.appendChild(div);
+  }
   const ul = $('roomList');
   ul.innerHTML = '';
   for (const r of d.rooms) {
@@ -291,7 +386,7 @@ function updateTags() {
     const t = r._tag;
     if (!t) continue;
     if (!show) { t.hidden = true; continue; }
-    _v.set(r._c.x, r.id === 'loggia' ? 1.2 : 1.9, r._c.z).project(camera);
+    _v.set(r._c.x, r.outdoor ? 1.2 : 1.9, r._c.z).project(camera);
     const vis = _v.z < 1 && Math.abs(_v.x) < 1.05 && Math.abs(_v.y) < 1.05;
     t.hidden = !vis;
     if (!vis) continue;
@@ -379,7 +474,7 @@ function setMode(mode, instant) {
   if (mode === 'overview' && (instant || !S.orbitInit)) resetOverview();
   if (mode === 'plan') resetPlan();
   if (mode !== 'walk' && document.pointerLockElement) document.exitPointerLock();
-  try { history.replaceState(null, '', '#' + mode); } catch (e) { /* sandboxed */ }
+  try { history.replaceState(null, '', '#' + current + (mode === 'overview' ? '' : '.' + mode)); } catch (e) { /* sandboxed */ }
   updateWhere();
 }
 
@@ -387,8 +482,22 @@ function resetOverview() {
   const [x0, z0, x1, z1] = S.data.bounds;
   const c = new THREE.Vector3((x0 + x1) / 2, 0.4, (z0 + z1) / 2);
   orbit.target.copy(c);
-  const k = Math.max(1, 0.8 / Math.max(0.3, camOrbit.aspect));   // back off on narrow portrait screens
-  camOrbit.position.set(c.x + 7.5 * k, 13.5 * k, c.z + 9.5 * k);
+  const dir = new THREE.Vector3(7.5, 13.5, 9.5);
+  const size = Math.hypot(x1 - x0, z1 - z0) / 12.56;              // relative to the river-view flat's footprint
+  let k = Math.max(1, 0.8 / Math.max(0.3, camOrbit.aspect)) * Math.max(1, size);   // back off on narrow portrait screens
+  // then make sure every corner of the flat is in frame (wide flats on narrow screens)
+  const corners = [];
+  for (const x of [x0, x1]) for (const z of [z0, z1]) for (const y of [0, S.data.ceiling || 2.6]) corners.push(new THREE.Vector3(x, y, z));
+  const v = new THREE.Vector3();
+  for (let i = 0; i < 8; i++) {
+    camOrbit.position.copy(c).addScaledVector(dir, k);
+    camOrbit.lookAt(c);
+    camOrbit.updateMatrixWorld();
+    let m = 0;
+    for (const p of corners) { v.copy(p).project(camOrbit); m = Math.max(m, Math.abs(v.x), Math.abs(v.y)); }
+    if (m <= 0.95) break;
+    k *= m / 0.9;
+  }
   orbit.update();
   S.orbitInit = true;
 }
@@ -445,7 +554,8 @@ function updateWhere() {
     $('whereHu').textContent = `${S.room.hu} · ${S.room.area.toFixed(1)} m²`;
   } else if (S.mode === 'plan') {
     $('whereName').textContent = 'Floor plan';
-    $('whereHu').textContent = `${S.data.netArea.toFixed(1)} m² + loggia`;
+    const out = S.data.rooms.filter(r => r.outdoor).map(r => r.name.toLowerCase());
+    $('whereHu').textContent = `${S.data.netArea.toFixed(1)} m²` + (out.length ? ` + ${out.join(', ')}` : ', all rooms');
   } else {
     $('whereName').textContent = 'Overview';
     $('whereHu').textContent = 'All rooms, ceilings removed';
@@ -631,13 +741,20 @@ function stepWalk(dt) {
 }
 requestAnimationFrame(frame);
 
-load().catch(err => {
+function showError(err) {
   console.error(err);
   const why = (err && (err.message || err.type || String(err))) || 'unknown error';
   const local = location.protocol === 'file:';
+  $('loading').hidden = false;
   $('loadText').textContent = local
     ? 'Open this page through a web server (for example: python3 -m http.server), not as a file.'
     : `The model could not be loaded (${why}). Reload the page to try again.`;
+}
+addEventListener('hashchange', () => {
+  const [flat, mode] = parseHash();
+  if (flat && flat !== current) loadFlat(flat, mode || 'overview').catch(showError);
+  else if (mode && mode !== S.mode && S.data) setMode(mode);
 });
+boot().catch(showError);
 
-window.flat = { S, setMode, goRoom, renderer, scene };
+window.flat = { S, setMode, goRoom, renderer, scene, loadFlat, get current() { return current; } };

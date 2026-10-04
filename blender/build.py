@@ -1,5 +1,5 @@
-"""Build the whole flat in Blender.  Run:  blender -b -P blender/build.py
-Writes build/flat.blend and web/data/scene.json."""
+"""Build one flat in Blender.  Run:  FLAT=<id> blender -b -P blender/build.py   (default FLAT=riverview)
+Writes build/<id>/flat.blend and data/<id>.json. The flat itself lives in blender/flats/<id>.py."""
 import sys
 import os
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
@@ -11,7 +11,9 @@ import math
 from math import pi, radians, cos, sin, atan2
 from mathutils import Vector, Matrix
 
-from plan import S, PX0, PY0, H, SLAB, X, Y, ROOMS, ROOM_ORDER, SLABS, OPENINGS, SPAWNS, room_area, net_area
+import types
+import plan as flat
+from plan import S, PX0, PY0, H, X, Y, ROOMS, ROOM_ORDER, SLABS, OPENINGS, SPAWNS, room_area, net_area, FLAT
 import lib
 from lib import (Geo, box, box_ext, cyl, lathe, make, mat, coll, fit_uv, BUILD, MODELS, ROOT, xform)
 import textures
@@ -164,6 +166,49 @@ M.update({
 for i, c in enumerate([(0.55, 0.16, 0.12), (0.18, 0.28, 0.40), (0.82, 0.76, 0.62), (0.25, 0.38, 0.28), (0.72, 0.62, 0.48), (0.35, 0.30, 0.38)]):
     M['book_' + 'abcdef'[i]] = mat('book_' + 'abcdef'[i], c, 0.7)
 
+# ---------------------------------------------------------------- materials added for the garden flat
+M.update({
+    'laminate': tm('laminate', 'laminate', 1.25, normal=0.35),
+    'tile_beige': tm('tile_beige', 'tile_beige', 1.0, rough=0.2, normal=0.5),
+    'tile_grey_floor': tm('tile_grey_floor', 'tile_grey_floor', 0.9, rough=0.35, normal=0.5),
+    'wood_beech': tm('wood_beech', 'wood_beech', 0.9, normal=0.3),
+    'wood_spruce': tm('wood_spruce', 'wood_spruce', 0.9, normal=0.35),
+    'wood_walnut': tm('wood_walnut', 'wood_walnut', 0.9, normal=0.35),
+    'plywood': tm('plywood', 'plywood', 0.9, normal=0.25),
+    'worktop_grey': tm('worktop_grey', 'worktop_grey', 1.0, normal=0.25),
+    'fab_teal': tm('fab_teal', 'fab_teal', 0.35, rough=0.85, normal=0.8),
+    'fab_slate': tm('fab_slate', 'fab_slate', 0.35, rough=0.95, normal=0.8),
+    'fab_navy': tm('fab_navy', 'fab_navy', 0.35, rough=0.8, normal=0.5),
+    'fab_brown': tm('fab_brown', 'fab_brown', 0.35, rough=0.95, normal=0.8),
+    'fab_orange': tm('fab_orange', 'fab_orange', 0.35, rough=0.95, normal=0.7),
+    'fab_peach': tm('fab_peach', 'fab_peach', 0.35, rough=0.95, normal=0.7),
+    'fab_blue': tm('fab_blue', 'fab_blue', 0.35, rough=0.85, normal=0.5),
+    'fab_rugdark': tm('fab_rugdark', 'fab_rugdark', 0.3, rough=0.98, normal=0.9),
+    'fab_olive': mat('fab_olive', (0.55, 0.58, 0.22), 0.95),
+    'quilt': mat('quilt', tex=T['floral'], rough=0.9, tile=0.9),
+    'curtain_cream': mat('curtain_cream', (0.86, 0.82, 0.74), 0.95, double=True),
+    'macrame': mat('macrame', (0.88, 0.84, 0.76), 0.98),
+    'white_matt': mat('white_matt', (0.88, 0.875, 0.865), 0.5),
+    'frame_grey': mat('frame_grey', (0.78, 0.78, 0.77), 0.35, 0.3),
+    'glass_red': mat('glass_red', (0.36, 0.02, 0.04), 0.03, spec=0.8),
+    'bowl_blue': mat('bowl_blue', (0.05, 0.12, 0.30), 0.2),
+    'crystal': mat('crystal', (0.96, 0.97, 1.0), 0.02, alpha=0.5),
+    'decal_black': mat('decal_black', (0.02, 0.02, 0.022), 0.6),
+    'mosaic': mat('mosaic', (0.35, 0.62, 0.62), 0.12),
+    'rug_white': mat('rug_white', (0.86, 0.84, 0.78), 0.97),
+    'led': mat('led', (1.0, 0.97, 0.92), 0.3, emission=(1.0, 0.95, 0.88), strength=6.0),
+    'bell_glass': mat('bell_glass', (0.90, 0.86, 0.78), 0.35, emission=(1.0, 0.85, 0.65), strength=1.5, double=True),
+    'canvas_dream': mat('canvas_dream', tex=T['dreamcatcher'], rough=0.85, tile=1.0),
+    'art_lemons': mat('art_lemons', tex=T['lemons'], rough=0.6, tile=1.0),
+    'art_lemons_blue': mat('art_lemons_blue', tex=T['lemons_blue'], rough=0.6, tile=1.0),
+    'art_arch': mat('art_arch', tex=T['art_arch'], rough=0.6, tile=1.0),
+    'sign_ocean': mat('sign_ocean', tex=T['sign_ocean'], rough=0.8, tile=1.0),
+})
+M['door_frame'] = M['door_white']
+M['door_leaf'] = M['door_white']
+for _k, _v in getattr(flat, 'MAT_ALIASES', {}).items():     # per-flat finishes (e.g. beech doors in grey steel frames)
+    M[_k] = M[_v]
+
 
 # ---------------------------------------------------------------- walls (boolean union minus openings)
 def build_walls():
@@ -230,7 +275,7 @@ def build_walls():
         keep = set(idx)
         bmesh.ops.delete(b2, geom=[f for f in b2.faces if f.index not in keep], context='FACES')
         g = Geo()
-        m = {'top': M['walltop'], 'ext': M['facade']}.get(key, M['paint'] if key != 'loggia' else M['facade'])
+        m = {'top': M['walltop'], 'ext': M['facade']}.get(key, M['paint'] if key not in flat.OUTDOOR else M['facade'])
         g.add(b2, m, jitter=False)
         out[key] = make('walls_' + key, g, collection='arch', room=(key if key in ROOMS else None), smooth=None,
                         lightmap=key in ROOMS, props={'kind': 'walltop' if key == 'top' else 'wall'})
@@ -246,19 +291,14 @@ def build_floors():
             xa, ya, xb, yb = rect_m(r)
             g.add(quad(xa, ya, xb, yb, 0.0), M[room['floor']], jitter=False)
         make('floor_' + key, g, collection='arch', room=key, smooth=None, props={'kind': 'floor'})
-        if key != 'loggia':
+        if key not in flat.OUTDOOR:
             g = Geo()
             for r in room['rects']:
                 xa, ya, xb, yb = rect_m(r)
                 g.add(quad(xa, ya, xb, yb, H, up=False), M['paint_ceiling'], jitter=False)
             make('ceiling_' + key, g, collection='arch', room=key, smooth=None, props={'kind': 'ceiling'})
-    # loggia: ceiling = underside of the slab above, plus the slabs' edges
-    xa, ya, xb, yb = rect_m((100, 54, 268, 126))
-    g = Geo()
-    g.add(quad(X(106), Y(126), X(263), Y(58), H, up=False), M['facade'], jitter=False)
-    g.add(box_ext(xa, ya, H, xb, yb, H + SLAB), M['concrete'])
-    g.add(box_ext(xa, ya, -SLAB, xb, yb, -0.002), M['concrete'])
-    make('loggia_slabs', g, collection='arch', room='loggia', smooth=None, props={'kind': 'ceiling'})
+    if hasattr(flat, 'extra_arch'):
+        flat.extra_arch(types.SimpleNamespace(**globals()))
     # thresholds in door gaps
     for op in OPENINGS:
         if op['z'][0] > 0 or op['kind'] in ('balcony',):
@@ -324,16 +364,39 @@ def wall_runs(key, rect):
             yield (e,) + s
 
 
-def is_open_edge(key, e, a0, a1, rect):
-    """Edges of hall rect A/B that face the other hall rect are open (no wall)."""
-    if key != 'hall':
-        return False
-    A, B = ROOMS['hall']['rects']
-    if rect == A and e == 'S' and a0 >= B[0] - 1:
-        return True
-    if rect == B and e == 'N':
-        return True
-    return False
+def open_spans(key, e, rect):
+    """Spans (a0, a1) of edge `e` of `rect` that touch another rectangle of the same room (no wall there)."""
+    x0, y0, x1, y1 = rect
+    out = []
+    for o in ROOMS[key]['rects']:
+        if o == rect:
+            continue
+        ox0, oy0, ox1, oy1 = o
+        if e == 'N' and abs(oy1 - y0) <= 1:
+            out.append((max(x0, ox0), min(x1, ox1)))
+        elif e == 'S' and abs(oy0 - y1) <= 1:
+            out.append((max(x0, ox0), min(x1, ox1)))
+        elif e == 'W' and abs(ox1 - x0) <= 1:
+            out.append((max(y0, oy0), min(y1, oy1)))
+        elif e == 'E' and abs(ox0 - x1) <= 1:
+            out.append((max(y0, oy0), min(y1, oy1)))
+    return [sp for sp in out if sp[1] > sp[0]]
+
+
+def minus_spans(a0, a1, spans):
+    segs = [(a0, a1)]
+    for c0, c1 in spans:
+        nxt = []
+        for p, q in segs:
+            if c1 <= p or c0 >= q:
+                nxt.append((p, q))
+                continue
+            if c0 > p:
+                nxt.append((p, c0))
+            if c1 < q:
+                nxt.append((c1, q))
+        segs = nxt
+    return segs
 
 
 def cladding(key, height, matname, thick=0.008, skip=(), band=None, kind='tile'):
@@ -343,36 +406,29 @@ def cladding(key, height, matname, thick=0.008, skip=(), band=None, kind='tile')
         for e, a0, a1, cap in wall_runs(key, rect):
             if e in skip:
                 continue
-            # split the hall A south edge where it meets rect B
-            if key == 'hall' and rect == ROOMS['hall']['rects'][0] and e == 'S':
-                a1 = min(a1, ROOMS['hall']['rects'][1][0])
-                if a1 <= a0:
-                    continue
-            if is_open_edge(key, e, a0, a1, rect):
-                continue
-            top = height if cap is None else min(height, cap)
-            if e == 'N':
-                b = box_ext(X(a0), Y(y0) - thick, 0, X(a1), Y(y0), top)
-            elif e == 'S':
-                b = box_ext(X(a0), Y(y1), 0, X(a1), Y(y1) + thick, top)
-            elif e == 'W':
-                b = box_ext(X(x0), Y(a1), 0, X(x0) + thick, Y(a0), top)
-            else:
-                b = box_ext(X(x1) - thick, Y(a1), 0, X(x1), Y(a0), top)
-            g.add(b, M[matname])
-            if band and cap is None:
-                bz0, bz1 = band
-                if e == 'N':
-                    bb = box_ext(X(a0), Y(y0) - thick - 0.003, bz0, X(a1), Y(y0), bz1)
-                elif e == 'S':
-                    bb = box_ext(X(a0), Y(y1), bz0, X(a1), Y(y1) + thick + 0.003, bz1)
-                elif e == 'W':
-                    bb = box_ext(X(x0), Y(a1), bz0, X(x0) + thick + 0.003, Y(a0), bz1)
-                else:
-                    bb = box_ext(X(x1) - thick - 0.003, Y(a1), bz0, X(x1), Y(a0), bz1)
-                g.add(bb, M['tile_band'])
+            for a0, a1 in minus_spans(a0, a1, open_spans(key, e, rect)):
+                clad_piece(g, key, rect, e, a0, a1, cap, height, matname, thick, band)
     if g.f:
         make(f'{kind}_{key}', g, collection='arch', room=key, smooth=None)
+
+
+def clad_piece(g, key, rect, e, a0, a1, cap, height, matname, thick, band):
+    """One tile / skirting slab along edge `e` of `rect`, from a0 to a1 (plan units)."""
+    x0, y0, x1, y1 = rect
+    top = height if cap is None else min(height, cap)
+
+    def slab(z0, z1, extra=0.0):
+        t = thick + extra
+        if e == 'N':
+            return box_ext(X(a0), Y(y0) - t, z0, X(a1), Y(y0), z1)
+        if e == 'S':
+            return box_ext(X(a0), Y(y1), z0, X(a1), Y(y1) + t, z1)
+        if e == 'W':
+            return box_ext(X(x0), Y(a1), z0, X(x0) + t, Y(a0), z1)
+        return box_ext(X(x1) - t, Y(a1), z0, X(x1), Y(a0), z1)
+    g.add(slab(0, top), M[matname])
+    if band and cap is None:
+        g.add(slab(band[0], band[1], 0.003), M['tile_band'])
 
 
 # ---------------------------------------------------------------- doors and frames
@@ -395,7 +451,7 @@ def door_frame(op, room_key):
     top = op['z'][1]
     j, prot, arch_w, arch_t = 0.025, 0.012, 0.065, 0.014
     g = Geo()
-    fm = M['door_white'] if op['id'] != 'door_front' else M['door_entry']
+    fm = M['door_frame'] if op['id'] != 'door_front' else M['door_entry']
 
     def bx(aa0, aa1, ww0, ww1, z0, z1, m, bev=0.002):
         (xa, ya), (xb, yb) = to_world(op, aa0, ww0), to_world(op, aa1, ww1)
@@ -510,7 +566,7 @@ def window(op, room_key):
     if op['kind'] == 'window':
         # interior sill board and exterior metal sill
         yi2 = yi + 0.03 * sgn_in
-        b(a0 - 0.04, a1 + 0.04, z0 - 0.025, z0, min(fy, yi2), max(fy, yi2), M['white_gloss'] if room_key != 'kitchen' else M['tile_kitchen'])
+        b(a0 - 0.04, a1 + 0.04, z0 - 0.025, z0, min(fy, yi2), max(fy, yi2), M['white_gloss'] if room_key not in flat.SILL_TILE_ROOMS else M[flat.SILL_TILE_MAT if hasattr(flat, 'SILL_TILE_MAT') else 'tile_kitchen'])
         yo2 = yo - 0.05 * sgn_in
         b(a0 - 0.02, a1 + 0.02, z0 - 0.04, z0 - 0.01, min(fy, yo2), max(fy, yo2), M['metal_grey'])
     # roller shutter box and partly lowered slats on the outside
@@ -647,134 +703,6 @@ def place_px(builder_geo, name, room, px, py, facing='S', z=0.0, solid=False, pr
     return make(name, builder_geo, loc=(x, y, z), rz=FACING[facing], room=room, solid=solid, props=props)
 
 
-def furnish():
-    # ---------------- living room (4.04 x 5.25 m)
-    L = 'living'
-    lw, ld = (519 - 268) * S, (432 - 106) * S
-    place(F.sofa_friheten(), 'sofa', L, lw - 0.46, 1.60, 'W', solid=True)
-    place(F.lack_table(), 'coffee_table', L, 2.42, 2.18, rz=pi / 2, solid=True)
-    place(F.rug(1.6, 2.3, 'rug_living'), 'rug_living', L, 2.55, 2.18, rz=0)
-    fit_uv(bpy.data.objects['rug_living'], 'xy')
-    place(F.not_lamp(), 'floor_lamp', L, lw - 0.24, 2.95, 'W')
-    place(F.poster_frame(), 'poster', L, lw - 0.006, 2.15, 'W', z=1.25)
-    fit_uv(bpy.data.objects['poster'], 'xz', flip_u=False)
-    place(F.ac_unit(), 'ac_living', L, lw - 0.11, 0.70, 'W', z=2.06)
-    place(F.radiator(0.8), 'radiator_living', L, 1.75, 0.07, 'S', z=0.12)
-    place(F.curtain_rod(2.05), 'rod_living', L, 2.08, 0.11, 'S', z=2.40)
-    place(F.curtain(0.48, 2.32), 'curtain_living_l', L, 1.30, 0.12, 'S', z=0.05)
-    place(F.curtain(0.48, 2.32), 'curtain_living_r', L, 2.86, 0.12, 'S', z=0.05)
-    place(F.poang(), 'armchair', L, 0.55, 0.72, rz=pi / 4, solid=True)
-    place(F.bamboo_shelf(), 'bamboo_shelf', L, 2.36, 0.22, 'S', solid=True)
-    place(F.billy(), 'bookcase', L, 0.175, 3.95, 'E', solid=True)
-    place(F.dark_cabinet(), 'cabinet_dark', L, 0.21, 3.18, 'E', solid=True)
-    place(F.cube_shelf(), 'cube_shelf', L, 1.42, ld - 0.57, 'W', solid=True)
-    place(F.dining_table(1.05), 'dining_table', L, 3.05, 4.25, solid=True)
-    place(F.sled_chair(), 'chair_1', L, 3.05, 3.50, 'S')
-    place(F.sled_chair(), 'chair_2', L, 2.28, 4.25, 'E')
-    place(F.folding_chair(), 'chair_3', L, 3.05, 5.00, 'N')
-    place(F.drum_pendant(0.72), 'pendant_living', L, 2.15, 2.75, z=H)
-    x, y = R(L, 0.38, 1.50)
-    place(F.pot(0.17, 0.30, 'terracotta'), 'pot_pachira', L, 0.38, 1.50)
-    import_model('pachira_aquatica_01', 'plant_pachira', L, (x, y, 0.27), rz=0.6, height=1.25, keep=['_b'])
-    x, y = R(L, 0.31, 3.18)      # kept off the wall: the closed bedroom door is right behind the cabinet
-    import_model('potted_plant_02', 'plant_cabinet', L, (x, y, 0.95), rz=1.2, height=0.62)
-    x, y = R(L, 1.30, ld - 0.70)
-    import_model('ceramic_vase_01', 'vase_shelf', L, (x, y, 1.12), height=0.24)
-
-    # ---------------- bedroom (2.53 x 4.73 m)
-    B = 'bedroom'
-    bw, bd = (263 - 106) * S, (432 - 138) * S
-    place(F.desk(), 'desk', B, 0.95, 0.45, 'S', solid=True)
-    place(F.slat_chair(), 'desk_chair', B, 0.95, 1.05, 'N')
-    place(F.drawers(0.48, 0.40, 0.70, 3), 'nightstand', B, 0.205, 1.06, 'E', solid=True)
-    place(F.daybed_hemnes(), 'daybed', B, 0.855, 2.40, 'E', solid=True)
-    place(F.sideboard(), 'sideboard', B, 0.205, 3.95, 'E', solid=True)
-    place(F.towel_ladder(), 'towel_ladder', B, 0.10, 4.50, 'E')
-    place(F.drawers(0.79, 0.43, 1.10, 5), 'chest_tarva', B, bw - 0.218, 1.95, 'W', solid=True)
-    place(F.ivar(), 'shelf_ivar', B, bw - 0.152, 1.04, 'W', solid=True)
-    place(F.ac_unit(), 'ac_bedroom', B, bw - 0.11, 1.95, 'W', z=2.08)
-    place(F.rigga(), 'clothes_rack', B, bw - 0.27, 4.12, rz=pi / 2, solid=True)
-    place(F.lantern(0.62), 'lantern', B, 1.26, 2.45, z=H)
-    place(F.not_lamp('metal_grey'), 'floor_lamp_bed', B, 0.16, 0.66, 'S')
-    place(F.radiator(1.0), 'radiator_bedroom', B, 0.87, 0.07, 'S', z=0.12)
-    place(F.curtain_rod(2.45), 'rod_bedroom', B, 1.26, 0.11, 'S', z=2.40)
-    place(F.curtain(0.40, 2.32), 'curtain_bed_l', B, 0.23, 0.12, 'S', z=0.05)
-    place(F.curtain(0.30, 2.32), 'curtain_bed_r', B, 2.38, 0.12, 'S', z=0.05)
-    x, y = R(B, bw - 0.152, 1.04)
-    place(F.pot(0.10, 0.14, 'ceramic_white'), 'pot_ivar', B, bw - 0.152, 1.04, z=1.79)
-    import_model('calathea_orbifolia_01', 'plant_ivar', B, (x, y, 1.91), height=0.36, keep=['_b'])
-    x, y = R(B, 0.20, 3.82)
-    import_model('ceramic_vase_03', 'vase_sideboard', B, (x, y, 0.90), height=0.22)
-
-    # ---------------- kitchen (2.58 x 1.43 m)
-    K = 'kitchen'
-    kw, kd = (266 - 106) * S, (688 - 599) * S
-    place(F.fridge(), 'fridge', K, 0.30, 0.30, 'S', solid=True)
-    place(F.raskog(), 'trolley', K, 0.80, 0.25, 'S', solid=True)
-    place(F.cooker(), 'cooker', K, 1.25, 0.31, 'S', solid=True)
-    cw = kw - 1.51
-    place(F.base_cabinets(cw, 2, sink_at=0.12), 'counter', K, 1.51 + cw / 2, 0.30, 'S', solid=True)
-    place(F.wall_cabinets(kw - 1.0, ['open', 'glass', 'wood', 'wood']), 'wall_cabinets', K, 1.0 + (kw - 1.0) / 2, 0.165, 'S', z=1.48)
-    place(F.fold_table(), 'fold_table', K, 1.55, kd - 0.20, 'N')
-    place(F.wall_sconce(), 'sconce_kitchen', K, 0.01, 0.75, 'E', z=2.12)
-    x, y = R(K, 0.95, kd + 0.02)
-    import_model('potted_plant_04', 'plant_kitchen', K, (x, y, 0.955), height=0.22, drop=['ground'])
-
-    # ---------------- bathroom (1.51 x 1.53 m)
-    Bt = 'bath'
-    tw, tdp = (200 - 106) * S, (592 - 497) * S
-    place(F.bathtub(tw, 0.70, 0.55), 'bathtub', Bt, tw / 2, tdp - 0.35, 'S', solid=True)
-    place(F.shower_mixer(), 'shower_mixer', Bt, 1.05, tdp, 'N', z=0.78)
-    g = Geo()
-    g.add(cyl(0.012, tw, at=(-tw / 2, 0, 0), seg=12, axis='X'), M['chrome'])
-    place(g, 'curtain_rod_bath', Bt, tw / 2, tdp - 0.70, z=2.0)
-    cg = F.curtain(0.42, 1.40, folds=5, amp=0.03)
-    for mi, m_ in enumerate(cg.mats):
-        cg.mats[mi] = M['curtain_floral']
-    ob = place(cg, 'curtain_bath', Bt, 0.24, tdp - 0.70, 'S', z=0.58)
-    fit_uv(ob, 'xz')
-    place(F.wall_shelf(0.40, 0.15), 'shelf_bath', Bt, tw - 0.08, 1.15, 'W', z=1.55)
-    x, y = R(Bt, tw - 0.08, 1.10)
-    import_model('potted_plant_04', 'plant_bath', Bt, (x, y, 1.575), height=0.18, drop=['ground'])
-    place(F.basket(), 'laundry_basket', Bt, tw - 0.24, 0.32, solid=True)
-    place(F.flush_light(), 'light_bath', Bt, tw / 2, tdp / 2, z=H)
-
-    # ---------------- WC (0.79 x 1.53 m)
-    Wc = 'wc'
-    ww, wd = (256 - 207) * S, (592 - 497) * S
-    g = Geo()
-    g.add(box(ww, 0.20, 1.05, bevel=0.004), M['wood_pine'], grain=0)
-    g.add(box(0.24, 0.012, 0.16, at=(0.08, -0.105, 0.82), bevel=0.004), M['plastic_white'])
-    g.add(box(0.07, 0.006, 0.10, at=(0.04, -0.113, 0.85), bevel=0.003), M['chrome'])
-    g.add(box(0.07, 0.006, 0.10, at=(0.12, -0.113, 0.85), bevel=0.003), M['chrome'])
-    place(g, 'cistern_box', Wc, ww / 2, wd - 0.10, 'S', solid=True)
-    place(F.toilet(), 'toilet', Wc, 0.48, wd - 0.20, 'N', solid=True)
-    place(F.wc_basin(), 'wc_basin', Wc, 0.135, 0.92, 'E', z=0.72, solid=True)
-    place(F.paper_stand(), 'paper_stand', Wc, 0.12, 1.24, 'E')
-    place(F.flush_light(0.13), 'light_wc', Wc, ww / 2, 0.6, z=H)
-
-    # ---------------- hall
-    Hl = 'hall'
-    ex = 356
-    place_px(F.built_in_cabinet(1.38, 0.40, H - 0.02), 'hall_cabinet', Hl, ex - 0.20 / S, 643, 'W', solid=True)
-    place_px(F.open_shelf(0.80, 0.35, 1.0), 'hall_shelf', Hl, ex - 0.176 / S, 562, 'W', solid=True)
-    place_px(F.paneling(1.42, 2.0), 'hall_paneling', Hl, ex - 0.008 / S, 488, 'W')
-    place_px(F.overhead_cabinet(1.42, 0.36, 0.55), 'hall_overhead', Hl, ex - 0.20 / S, 488, 'W', z=2.03)
-    place_px(F.coat_rack(1.0), 'coat_rack', Hl, 263 + 0.013 / S, 548, 'E', z=1.62)
-    ob = place_px(F.rug(0.75, 1.9, 'rug_hall'), 'rug_hall', Hl, 309.5, 588)
-    fit_uv(ob, 'xy')
-    g = Geo()
-    g.add(box(0.62, 0.42, 0.012, bevel=0.003), M['coir'])
-    place_px(g, 'door_mat', Hl, 309, 672)
-    place_px(F.dome_pendant(0.55), 'pendant_hall', Hl, 309.5, 585, z=H)
-    place_px(F.brass_sconce(), 'sconce_hall', Hl, 106 + 0.01 / S, 464, 'E', z=2.05)
-    place_px(F.flush_light(0.14), 'light_hall_a', Hl, 215, 464, z=H)
-
-    # ---------------- loggia
-    Lg = 'loggia'
-    place_px(F.railing((263 - 106) * S), 'railing', Lg, (106 + 263) / 2, 56.5, 'S')
-
-
 # ---------------------------------------------------------------- lights, world, render settings
 def lighting():
     world = bpy.data.worlds.new('World')
@@ -800,18 +728,12 @@ def lighting():
     so = bpy.data.objects.new('Sun', sun)
     coll('lights').objects.link(so)
     # direction: from plan-north (+Y) slightly from the east, 24 deg above the horizon
-    el, az = radians(26), radians(-6)
+    sun.energy = flat.SUN['energy']
+    el, az = radians(flat.SUN['elevation']), radians(flat.SUN['azimuth'])
     d = Vector((sin(az) * cos(el), cos(az) * cos(el), sin(el)))   # vector pointing TO the sun
     so.rotation_euler = d.to_track_quat('Z', 'Y').to_euler()
     # ceiling fill lights per room (soft area lights)
-    fills = {
-        'living': [((268 + 519) / 2, (106 + 432) / 2, 2.8, 3.6, 18)],
-        'bedroom': [((106 + 263) / 2, (138 + 432) / 2, 1.6, 3.2, 12)],
-        'kitchen': [((106 + 266) / 2, (599 + 688) / 2, 1.6, 0.9, 30)],
-        'hall': [((106 + 356) / 2, (437 + 491) / 2, 2.6, 0.5, 26), ((263 + 356) / 2, (491 + 688) / 2, 0.9, 2.4, 40)],
-        'bath': [((106 + 200) / 2, (497 + 592) / 2, 0.8, 0.8, 26)],
-        'wc': [((207 + 256) / 2, (497 + 592) / 2, 0.4, 0.8, 12)],
-    }
+    fills = flat.FILLS
     for key, lst in fills.items():
         for i, (px, py, sx, sy, w) in enumerate(lst):
             l = bpy.data.lights.new(f'fill_{key}_{i}', 'AREA')
@@ -822,9 +744,6 @@ def lighting():
             o = bpy.data.objects.new(f'fill_{key}_{i}', l)
             o.location = (X(px), Y(py), H - 0.02)
             coll('lights').objects.link(o)
-    # point lights inside lamp shades
-    for name, px, py, z, w in (('pendant_living', None, None, None, 0), ):
-        pass
 
 
 def render_settings():
@@ -854,6 +773,8 @@ def write_scene_json():
         rooms.append(dict(id=k, name=r['name'], hu=r['hu'], area=round(room_area(k), 1),
                           rects=[[X(q[0]), -Y(q[1]), X(q[2]), -Y(q[3])] for q in r['rects']],
                           spawn=[X(SPAWNS[k][0]), -Y(SPAWNS[k][1]), SPAWNS[k][2]]))
+        if k in flat.OUTDOOR:
+            rooms[-1]['outdoor'] = True
     # wall colliders (doors are passable, windows are not)
     cols = []
     for (x0, y0, x1, y1) in SLABS:
@@ -882,8 +803,8 @@ def write_scene_json():
         for a, b in segs:
             q = (a, y0, b, y1) if horiz else (x0, a, x1, b)
             cols.append([round(X(q[0]), 3), round(-Y(q[1]), 3), round(X(q[2]), 3), round(-Y(q[3]), 3)])
-    # loggia railing + balcony door threshold stays passable; railing is a wall
-    cols.append([round(X(100), 3), round(-Y(54), 3), round(X(268), 3), round(-Y(58), 3)])
+    for q in getattr(flat, 'EXTRA_COLLIDERS_PX', []):
+        cols.append([round(X(q[0]), 3), round(-Y(q[1]), 3), round(X(q[2]), 3), round(-Y(q[3]), 3)])
     furn = []
     for o in bpy.data.objects:
         if o.get('solid') and o.type == 'MESH':
@@ -891,10 +812,19 @@ def write_scene_json():
             xs = [p.x for p in pts]
             ys = [p.y for p in pts]
             furn.append([round(min(xs), 3), round(-max(ys), 3), round(max(xs), 3), round(-min(ys), 3), o.name])
-    data = dict(scale=S, ceiling=H, netArea=round(net_area(), 1), rooms=rooms, walls=cols, furniture=furn,
-                bounds=[X(94), -Y(54), X(531), -Y(700)])
-    os.makedirs(os.path.join(ROOT, 'data'), exist_ok=True)
-    with open(os.path.join(ROOT, 'data', 'scene.json'), 'w') as f:
+    bx0, by0, bx1, by1 = flat.BOUNDS_PX
+    data = dict(id=FLAT, scale=S, ceiling=H, netArea=round(net_area(), 1), rooms=rooms, walls=cols, furniture=furn,
+                bounds=[X(bx0), -Y(by0), X(bx1), -Y(by1)], viewRotation=flat.VIEW_ROTATION, **flat.META,
+                model=f'assets/{FLAT}/flat.glb', view=f'assets/{FLAT}/view.jpg')
+    if hasattr(flat, 'OUTSIDE_PROBE'):          # the room whose light the viewer uses for the outside of the walls
+        data['outsideProbe'] = flat.OUTSIDE_PROBE
+    out = os.path.join(ROOT, 'data', f'{FLAT}.json')
+    old = json.load(open(out)) if os.path.exists(out) else {}
+    for k in ('lightmaps', 'lmMax'):          # keep the bake results of the previous run
+        if k in old:
+            data[k] = old[k]
+    os.makedirs(os.path.dirname(out), exist_ok=True)
+    with open(out, 'w') as f:
         json.dump(data, f, indent=1)
 
 
@@ -902,29 +832,22 @@ def write_scene_json():
 F.M = M
 walls = build_walls()
 build_floors()
-for key in ROOMS:
-    if key in ('bath', 'wc', 'kitchen'):
-        continue
-    for rect in ROOMS[key]['rects']:
-        pass
-# skirting: wood in parquet rooms, tile in the hall
-for key, matname, h in (('living', 'wood_skirting', 0.06), ('bedroom', 'wood_skirting', 0.06), ('hall', 'tile_floor', 0.08),
-                        ('loggia', 'tile_loggia', 0.08)):
+for key, matname, h in flat.SKIRTING:
     cladding(key, h, matname, thick=0.014 if 'wood' in matname else 0.01, kind='skirting')
-cladding('kitchen', 1.50, 'tile_kitchen', kind='tiles')
-cladding('bath', 2.00, 'tile_bath', kind='tiles')
-cladding('wc', 1.50, 'tile_wc', band=(1.40, 1.50), kind='tiles')
+for key, h, matname, kw in flat.CLADDING:
+    cladding(key, h, matname, kind='tiles', **kw)
 for op in OPENINGS:
     sides = side_rooms(op)
     rk = op.get('swing') or (sides[0] if sides[0] in ROOMS else sides[1])
     if op['kind'] in ('door', 'arch'):
         door_frame(op, rk)
     else:
-        inside = sides[1] if sides[1] in ROOMS and sides[1] != 'loggia' else sides[0]
+        inside = sides[1] if sides[1] in ROOMS and sides[1] not in flat.OUTDOOR else sides[0]
         window(op, inside)
-furnish()
+flat.furnish(types.SimpleNamespace(**globals()))
 lighting()
 render_settings()
 write_scene_json()
-bpy.ops.wm.save_as_mainfile(filepath=os.path.join(BUILD, 'flat.blend'))
+os.makedirs(os.path.join(BUILD, FLAT), exist_ok=True)
+bpy.ops.wm.save_as_mainfile(filepath=os.path.join(BUILD, FLAT, 'flat.blend'))
 print('BUILD OK', len(bpy.data.objects), 'objects, net area', round(net_area(), 1))

@@ -265,13 +265,13 @@ def radiator(w, h=0.55, d=0.10):
     return g
 
 
-def curtain(width, height, folds=7, amp=0.035):
+def curtain(width, height, folds=7, amp=0.035, matname='sheer'):
     g = Geo()
 
     def f(u, v):
         x = (u - 0.5) * width
         return (x, amp * sin(u * folds * 2 * pi), v * height)
-    g.add(grid_surface(f, folds * 8, 2), M['sheer'])
+    g.add(grid_surface(f, folds * 8, 2), M[matname])
     return g
 
 
@@ -696,7 +696,7 @@ def entry_door_leaf(w, h=2.04, t=0.06):
 def interior_leaf(w, kind='flush', h=2.00, t=0.04):
     """Interior door leaf. Origin at hinge edge, leaf along +X. kind: flush | glazed | vent."""
     g = Geo()
-    m = M['door_white']
+    m = M.get('door_leaf', M['door_white'])
     if kind == 'glazed':
         st = 0.11
         g.add(box(st, t, h, at=(st / 2, 0, 0), bevel=0.003), m)

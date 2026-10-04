@@ -1,0 +1,6 @@
+{
+  "flats": [
+    {"id": "riverview", "title": "River-view flat", "summary": "48.6 m² · 1½ rooms", "data": "data/riverview.json", "thumb": "assets/riverview/thumb.jpg"},
+    {"id": "garden", "title": "Garden flat", "summary": "66.2 m² · 3 rooms", "data": "data/garden.json", "thumb": "assets/garden/thumb.jpg"}
+  ]
+}
