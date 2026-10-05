@@ -17,6 +17,7 @@ const LABELS = {
   '20260910_105258': 'From the far corner',
 };
 const SPEED = 1.1, FAST = 2.4;          // m/s
+const NEAR = 0.8;                        // m from the nearest photo position, unless free roam is on
 const $ = (id) => document.getElementById(id);
 const frame = $('frame'), hint = $('hint');
 if (matchMedia('(pointer: coarse)').matches) hint.textContent = 'Drag to look · pinch to move';
@@ -32,7 +33,7 @@ scene.add(new SparkRenderer({ renderer }));
 
 const S = {
   views: [], at: -1, tween: null, keys: new Set(), center: new THREE.Vector3(), radius: 4,
-  yaw: 0, pitch: 0, roll: 0, compare: false, split: 50, moved: false,
+  yaw: 0, pitch: 0, roll: 0, compare: false, split: 50, moved: false, roam: false,
 };
 
 function resize() {
@@ -167,6 +168,15 @@ function moveBy(dx, dy, dz) {            // metres: dx right, dy up, dz forward 
   off.y = 0;
   if (off.length() > S.radius) camera.position.sub(off.multiplyScalar(1 - S.radius / off.length()));
   camera.position.y = THREE.MathUtils.clamp(camera.position.y, 0.35, 2.6);
+  // unless free roam is on, stay within NEAR of a photo position, where the splat holds up
+  if (!S.roam) {
+    let near = null, nd = Infinity;
+    for (const v of S.views) {
+      const d = v.pos.distanceTo(camera.position);
+      if (d < nd) { nd = d; near = v; }
+    }
+    if (nd > NEAR) camera.position.sub(near.pos).multiplyScalar(NEAR / nd).add(near.pos);
+  }
   nudgeHint();
 }
 function dolly(d) {                       // along the actual view direction (into the picture)
@@ -268,6 +278,7 @@ function setCompareVisible() {
     hint.style.opacity = 0;
   }
 }
+$('roam').addEventListener('change', (e) => { S.roam = e.target.checked; });
 $('compare').addEventListener('change', (e) => {
   S.compare = e.target.checked;
   if (S.compare && !S.preloaded) {

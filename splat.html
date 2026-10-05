@@ -15,6 +15,7 @@
   --bg: #eef0ed; --panel: #fbfcfa; --ink: #1c2421; --muted: #5c6863; --line: #d9dfda;
   --accent: #1f5a55; --accent-ink: #f4faf8; --chip: #e5ebe7; --glass: rgba(251, 252, 250, .86);
   --void: #1a1f1d;
+  --haze: #d9d6d0;        /* behind the splat: where no photo looked reads as a soft haze instead of a black hole */
   --shadow: 0 1px 2px rgba(20, 30, 26, .06), 0 8px 24px rgba(20, 30, 26, .10);
   --f-display: "Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
   --f-body: "Instrument Sans", "Helvetica Neue", "Segoe UI", system-ui, sans-serif;
@@ -61,6 +62,7 @@ h2 { font: 500 11px/1 var(--f-data); letter-spacing: .14em; text-transform: uppe
 .views button[aria-current="true"] span { color: var(--accent) }
 
 .toggle { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 0; border-block: 1px solid var(--line) }
+.toggle + .toggle { border-top: 0; margin-top: -20px }
 .toggle label { display: grid; gap: 1px; cursor: pointer }
 .toggle small { color: var(--muted); font-size: 12.5px }
 .switch { appearance: none; width: 40px; height: 24px; border-radius: 12px; background: var(--line); position: relative; cursor: pointer;
@@ -83,7 +85,7 @@ h2 { font: 500 11px/1 var(--f-data); letter-spacing: .14em; text-transform: uppe
 /* ---------- stage: the splat in a 4:3 frame, the photo on top behind a divider */
 .stage { position: relative; min-width: 0; min-height: 0; display: grid; place-items: center; padding: 20px; overflow: hidden }
 .frame { position: relative; aspect-ratio: 4 / 3; width: min(100%, calc((100dvh - 40px) * 4 / 3)); max-height: 100%;
-  border-radius: 12px; overflow: hidden; background: var(--void); box-shadow: var(--shadow); touch-action: none; cursor: grab }
+  border-radius: 12px; overflow: hidden; background: var(--haze); box-shadow: var(--shadow); touch-action: none; cursor: grab }
 .frame.dragging { cursor: grabbing }
 .frame canvas { position: absolute; inset: 0; width: 100%; height: 100%; display: block }
 .photo { position: absolute; inset: 0; pointer-events: none; opacity: 0; transition: opacity .35s }
@@ -145,6 +147,10 @@ h2 { font: 500 11px/1 var(--f-data); letter-spacing: .14em; text-transform: uppe
       <label for="compare"><span>Compare with the photo</span><small>Drag the divider across the frame</small></label>
       <input type="checkbox" class="switch" id="compare" role="switch">
     </div>
+    <div class="toggle">
+      <label for="roam"><span>Free roam</span><small>Off: you stay within a step of the photos</small></label>
+      <input type="checkbox" class="switch" id="roam" role="switch">
+    </div>
     <dl class="keys">
       <dt>Drag</dt><dd>look around</dd>
       <dt>W A S D</dt><dd>move (arrow keys too), Shift faster</dd>
@@ -157,8 +163,9 @@ h2 { font: 500 11px/1 var(--f-data); letter-spacing: .14em; text-transform: uppe
       <div class="stat"><b>8</b><span>photos used</span></div>
     </div>
     <div class="notes">
-      <p><b>Where it holds up.</b> At and near the photo viewpoints it is close to a photograph, light and all. Step a metre or
-        two away and things the photos never saw (behind the sofa, under the table, the far side of the room) turn into haze.</p>
+      <p><b>Where it holds up.</b> At the photo viewpoints it is close to a photograph, light and all. Within a step of them it
+        stays recognisable but softens. Further away (try free roam), whatever the photos never saw (behind the sofa, under
+        the table, the far side of the room) turns into haze and streaks.</p>
       <p><b>How it was made.</b> Camera positions from the photos with COLMAP, then trained on a CPU with OpenSplat (no GPU in
         this environment), 6,000 steps at 1008 × 756 px. Only the eight photos that overlap enough could be placed; the three
         looking east share too little with the rest, so that half of the room is missing.</p>

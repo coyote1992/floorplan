@@ -1,6 +1,7 @@
 """Turn a trained Gaussian splat (OpenSplat / 3DGS .ply in COLMAP coordinates) into a web-sized .splat file
 standing upright in metres, plus the photo cameras for the viewer.
    python3 blender/splat_convert.py <splat.ply> <cameras.json> <out dir> [--ceiling 2.95] [--eye 1.45] [--radius 9] [--max 600000]
+                                     [--needle 12] [--maxsize 0.6]
 
 COLMAP's frame has an arbitrary orientation and scale. "Up" is taken from the photos (people hold phones level),
 the floor is the lowest dense layer of splats, and the scale comes from the known ceiling height (--ceiling: floor to
@@ -16,7 +17,7 @@ import numpy as np
 
 args = sys.argv[1:]
 src, cams_path, out = args[0], args[1], args[2]
-opt = {k: float(args[args.index(k) + 1]) for k in ('--eye', '--radius', '--max', '--ceiling') if k in args}
+opt = {k: float(args[args.index(k) + 1]) for k in ('--eye', '--radius', '--max', '--ceiling', '--needle', '--maxsize') if k in args}
 EYE, RADIUS, MAXN = opt.get('--eye', 1.45), opt.get('--radius', 9.0), int(opt.get('--max', 600000))
 os.makedirs(out, exist_ok=True)
 SH_C0 = 0.28209479177387814
@@ -94,6 +95,16 @@ quat = np.stack([g['rot_0'], g['rot_1'], g['rot_2'], g['rot_3']], 1).astype(np.f
 quat /= np.linalg.norm(quat, axis=1, keepdims=True)
 Q = mat_to_quat(A[None] @ quat_to_mat(quat))
 logs = np.stack([g['scale_0'], g['scale_1'], g['scale_2']], 1) + np.log(s)
+# with few photos training leaves needles (one axis thousands of times the others) and huge sheets that only look right
+# from the photo they were fitted to; seen from anywhere else they are the spikes and smears. --needle K shortens the
+# longest axis to at most K times the middle one, --maxsize L (metres) drops splats longer than that
+if '--needle' in opt:
+    srt = np.sort(logs, 1)
+    longest = np.argmax(logs, 1)
+    cap = srt[:, 1] + np.log(opt['--needle'])
+    logs[np.arange(len(logs)), longest] = np.minimum(srt[:, 2], cap)
+if '--maxsize' in opt:
+    keep &= logs.max(1) < np.log(opt['--maxsize'])
 rgb = np.clip(0.5 + SH_C0 * np.stack([g['f_dc_0'], g['f_dc_1'], g['f_dc_2']], 1), 0, 1)
 
 idx = np.where(keep)[0]
