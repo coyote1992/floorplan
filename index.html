@@ -168,7 +168,7 @@ kbd { font: 500 11px var(--f-data); padding: 1px 5px; border: 1px solid var(--li
 @media (prefers-reduced-motion: reduce) { * { transition: none !important } }
 </style>
 <script type="importmap">
-{ "imports": { "three": "./vendor/three/three.module.min.js", "three/addons/": "./vendor/three/addons/" } }
+{ "imports": { "three": "./vendor/three/three.module.min.js", "three/addons/": "./vendor/three/addons/", "rapier": "./vendor/rapier/rapier.mjs" } }
 </script>
 </head>
 <body>
@@ -208,7 +208,7 @@ kbd { font: 500 11px var(--f-data); padding: 1px 5px; border: 1px solid var(--li
         <button role="tab" data-mode="walk" aria-selected="false">Walk</button>
         <button role="tab" data-mode="plan" aria-selected="false">Plan</button>
       </div>
-      <div class="tools"><button class="tool" id="resetBtn">Reset view</button></div>
+      <div class="tools"><button class="tool" id="tidyBtn" hidden>Put things back</button><button class="tool" id="resetBtn">Reset view</button></div>
     </div>
     <div class="hud mini" id="mini">
       <header><span>Floor plan</span><span>1 m grid</span></header>

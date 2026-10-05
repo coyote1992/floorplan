@@ -43,7 +43,18 @@ vl = bpy.context.view_layer
 
 
 def group(room):
-    return [o for o in bpy.data.objects if o.type == 'MESH' and o.get('room') == room and o.get('lightmap')]
+    return [o for o in bpy.data.objects if o.type == 'MESH' and o.get('room') == room and o.get('lightmap') and not o.get('lm_own')]
+
+
+def own_uv(o):
+    """Generated pieces (thousands of small faces) bake into their own lightmap laid out like their texture,
+    instead of being cut into tiny islands of the room's atlas."""
+    me = o.data
+    if 'Lightmap' not in me.uv_layers:
+        me.uv_layers.active = me.uv_layers[0]
+        me.uv_layers.new(name='Lightmap', do_init=True)
+    me.uv_layers[0].active_render = True
+    o['lmkey'] = o.name
 
 
 # ---------------------------------------------------------------- lightmap UVs
@@ -203,6 +214,11 @@ for o in bpy.data.objects:
     if o.type == 'MESH' and o.get('lightmap') is None:
         o['lightmap'] = False
 
+# pieces you can move in the viewer stay out of the baked light (no shadow left behind when they move)
+movable = [o for o in bpy.data.objects if o.get('dynamic')]
+for o in movable:
+    o.hide_render = True
+
 rooms = list(ROOMS.keys()) if not ROOMS_TO_BAKE else ROOMS_TO_BAKE.split(',')
 info = {}
 for room in rooms:
@@ -220,6 +236,19 @@ for room in rooms:
         print('DENOISE FAILED', room, e, flush=True)
     info[room] = encode(p, room)
 
+# generated pieces with a lightmap of their own (size in their 'lm_own' property)
+for o in [o for o in bpy.data.objects if o.type == 'MESH' and o.get('lightmap') and o.get('lm_own')]:
+    own_uv(o)
+    if o.get('room') not in rooms or SKIP_BAKE:
+        continue
+    size = int(o['lm_own'])
+    img, p = bake_group(o.name, [o], size)
+    try:
+        p = denoise(p, size)
+    except Exception as e:
+        print('DENOISE FAILED', o.name, e, flush=True)
+    info[o.name] = encode(p, o.name)
+
 # objects of rooms that were not re-baked keep their previous UVs: make sure every lightmapped object has a Lightmap UV
 for room in ROOMS:
     if room in rooms:
@@ -227,6 +256,9 @@ for room in ROOMS:
     objs = group(room)
     if objs and any('Lightmap' not in o.data.uv_layers for o in objs):
         make_lightmap_uvs(objs, margin=6 / SIZES.get(room, 1024) * 1.6)
+
+for o in movable:
+    o.hide_render = False
 
 # remove bake helper nodes so they are not exported
 for m in bpy.data.materials:
@@ -253,7 +285,7 @@ bpy.ops.export_scene.gltf(
 sj = os.path.join(ROOT, 'data', f'{FLAT}.json')
 data = json.load(open(sj))
 lm = data.get('lightmaps', {})
-for r in ROOMS:
+for r in list(ROOMS) + [o.name for o in bpy.data.objects if o.get('lm_own')]:
     if os.path.exists(os.path.join(ASSETS, f'lm_{r}.jpg')):
         lm[r] = dict(file=f'assets/{FLAT}/lm_{r}.jpg', **{k: v for k, v in (info.get(r) or lm.get(r, {})).items() if k != 'file'})
 data['lightmaps'] = lm

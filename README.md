@@ -39,7 +39,8 @@ every script; outputs go to `build/<id>/`, `assets/<id>/` and `data/<id>.json`.
 | Walls, doors, windows, finishes and every furniture piece, modelled with Python in Blender 4.2 | `blender/build.py` (+ `flats/<id>.py`, `lib.py`, `furniture.py`, `furniture2.py`, `textures.py`) | `build/<id>/flat.blend`, `data/<id>.json` |
 | Daylight + lamps baked into per-room lightmaps with Cycles, denoised with OIDN, exported to glTF | `blender/bake.py` | `assets/<id>/flat.glb`, `assets/<id>/lm_*.jpg` |
 | The view out of the windows, rendered as a panorama | `blender/panorama.py` (river), `blender/flats/garden_view.py` (garden) | `assets/<id>/view.jpg` |
-| Viewer | `index.html`, `app.js` (three.js r170, vendored) | |
+| Pieces generated from photos (image-blaster on FAL), slimmed for the web | `blender/slim_gen.py` | `gen/<id>/` |
+| Viewer | `index.html`, `app.js`, `physics.js` (three.js r170 and Rapier 0.21, vendored) | |
 
 Rebuild a flat:
 
@@ -79,6 +80,21 @@ images of each room into `build/<id>/renders/`.
   the living room, the floor bed in the west room, the sofa bed, desks and wardrobe in the east room,
   the galley kitchen with its red glass splashback, the loft storage in the walk-in closet.
 * The garden door in the living room is shown closed; the other doors stand open.
+
+### Generated pieces and interaction (garden living room, pilot)
+
+The sofa, dining chairs, chandelier, dracaena and the loose cushions and blanket in the garden flat's living room
+were generated from the photos with [image-blaster](https://github.com/neilsonnn/image-blaster)'s pipeline on FAL:
+each piece is cut out of a photo (`fal-ai/nano-banana-2/edit`), turned into a textured 3D model
+(`fal-ai/hunyuan3d-v3/image-to-3d`, 50k faces, PBR maps), then slimmed for the web and scaled to the measured
+sizes. `gen/garden/` keeps the slimmed models with the cut-out reference and the request details of each one
+(`blender/slim_gen.py` makes them; without them the build falls back to the hand-modelled pieces). The table is the
+hand-modelled one: the generated table came out square.
+
+In Walk mode the chairs, cushions and blanket are physics objects ([Rapier](https://rapier.rs), loaded only for
+flats that have them): walk into them to push them, drag one to pick it up and carry it, let go to drop or throw it,
+mouse wheel to hold it nearer or further. "Put things back" resets them. Movable pieces are left out of the baked
+light and get a soft contact shadow instead; generated pieces that stay put get a lightmap of their own.
 
 The views out of the windows are stylised reconstructions, not photographs.
 

@@ -1,0 +1,33 @@
+{
+ "id": "dracaena",
+ "faces_generated": 49908,
+ "faces": 30000,
+ "texture_px": [
+  2048,
+  1024
+ ],
+ "image": {
+  "endpoint": "fal-ai/nano-banana-2/edit",
+  "request_id": "01a10b01-5cd1-7392-8204-72e76afebf17",
+  "submitted_at": "2026-10-05T07:40:00.402Z",
+  "completed_at": "2026-10-05T07:40:43.408Z",
+  "prompt": "Isolate the the tall dracaena (dragon tree) houseplant with several thin curved trunks and spiky green leaf crowns, standing in its round grey pot. Remove the wall, curtain, macrame hanging, sofa and pillows behind and beside it. Show the whole plant from pot to the top leaves from this image. Reproduce it exactly as shown -- same colors, materials, and proportions. White background, centered, tight crop, studio lighting. No other objects, no scene, no people, no text, no shadows on the ground. Isolate the object and remove all clustered, adjacent, overlapping, or items resting on the target object. Create a clean render of that one single object that is true to the source image."
+ },
+ "model": {
+  "endpoint": "fal-ai/hunyuan3d-v3/image-to-3d",
+  "request_id": "01a10b03-4678-7033-a261-d74572b2f589",
+  "submitted_at": "2026-10-05T07:42:05.635Z",
+  "completed_at": "2026-10-05T07:47:26.187Z",
+  "input": {
+   "generate_type": "Normal",
+   "enable_pbr": true,
+   "face_count": 50000,
+   "input_image_url": "[stripped]"
+  }
+ },
+ "name": "tall dracaena plant in pot",
+ "description": "the tall dracaena (dragon tree) houseplant with several thin curved trunks and spiky green leaf crowns, standing in its round grey pot. Remove the wall, curtain, macrame hanging, sofa and pillows behind and beside it. Show the whole plant from pot to the top leaves",
+ "source_images": [
+  "0-dracaena.jpg"
+ ]
+}

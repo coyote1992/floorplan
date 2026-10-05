@@ -1,0 +1,33 @@
+{
+ "id": "blanket-yellow",
+ "faces_generated": 50000,
+ "faces": 6000,
+ "texture_px": [
+  1024,
+  512
+ ],
+ "image": {
+  "endpoint": "fal-ai/nano-banana-2/edit",
+  "request_id": "01a10b01-5c41-70a0-a92e-878838c4aeb0",
+  "submitted_at": "2026-10-05T07:40:00.275Z",
+  "completed_at": "2026-10-05T07:40:17.083Z",
+  "prompt": "Isolate the the rolled-up bright yellow fleece blanket, a soft cylinder roll lying on its side, the whole roll. Remove the mint-green blanket roll next to it from this image. Reproduce it exactly as shown -- same colors, materials, and proportions. White background, centered, tight crop, studio lighting. No other objects, no scene, no people, no text, no shadows on the ground. Isolate the object and remove all clustered, adjacent, overlapping, or items resting on the target object. Create a clean render of that one single object that is true to the source image."
+ },
+ "model": {
+  "endpoint": "fal-ai/hunyuan3d-v3/image-to-3d",
+  "request_id": "01a10b03-4580-7fc3-bc09-f6de2e92edfa",
+  "submitted_at": "2026-10-05T07:42:05.281Z",
+  "completed_at": "2026-10-05T07:44:51.191Z",
+  "input": {
+   "generate_type": "Normal",
+   "enable_pbr": true,
+   "face_count": 50000,
+   "input_image_url": "[stripped]"
+  }
+ },
+ "name": "rolled yellow fleece blanket",
+ "description": "the rolled-up bright yellow fleece blanket, a soft cylinder roll lying on its side, the whole roll. Remove the mint-green blanket roll next to it",
+ "source_images": [
+  "0-blanket-yellow.jpg"
+ ]
+}

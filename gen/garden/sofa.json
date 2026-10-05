@@ -1,0 +1,37 @@
+{
+ "id": "sofa",
+ "faces_generated": 50012,
+ "faces": 30000,
+ "texture_px": [
+  2048,
+  1024
+ ],
+ "colour_gamma": [
+  0.6,
+  0.85
+ ],
+ "image": {
+  "endpoint": "fal-ai/nano-banana-2/edit",
+  "request_id": "01a10b01-5c9b-7f83-9c03-7eef8fd03523",
+  "submitted_at": "2026-10-05T07:40:00.395Z",
+  "completed_at": "2026-10-05T07:40:17.027Z",
+  "prompt": "Isolate the the L-shaped corner sofa with the chaise longue on the left: charcoal-grey seat and back cushions, teal upholstered base, back and armrests with dark grey piping. Remove every loose throw pillow and both rolled blankets, but keep the sofa's own fixed back cushions. Show the entire sofa including the chaise end and the right armrest from this image. Reproduce it exactly as shown -- same colors, materials, and proportions. White background, centered, tight crop, studio lighting. No other objects, no scene, no people, no text, no shadows on the ground. Isolate the object and remove all clustered, adjacent, overlapping, or items resting on the target object. Create a clean render of that one single object that is true to the source image."
+ },
+ "model": {
+  "endpoint": "fal-ai/hunyuan3d-v3/image-to-3d",
+  "request_id": "01a10b03-4788-7403-8e20-d495e936b4ba",
+  "submitted_at": "2026-10-05T07:42:05.651Z",
+  "completed_at": "2026-10-05T07:47:38.733Z",
+  "input": {
+   "generate_type": "Normal",
+   "enable_pbr": true,
+   "face_count": 50000,
+   "input_image_url": "[stripped]"
+  }
+ },
+ "name": "L-shaped corner sofa",
+ "description": "the L-shaped corner sofa with the chaise longue on the left: charcoal-grey seat and back cushions, teal upholstered base, back and armrests with dark grey piping. Remove every loose throw pillow and both rolled blankets, but keep the sofa's own fixed back cushions. Show the entire sofa including the chaise end and the right armrest",
+ "source_images": [
+  "0-sofa.jpg"
+ ]
+}

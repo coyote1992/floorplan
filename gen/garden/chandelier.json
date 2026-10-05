@@ -1,0 +1,33 @@
+{
+ "id": "chandelier",
+ "faces_generated": 48814,
+ "faces": 24000,
+ "texture_px": [
+  1024,
+  512
+ ],
+ "image": {
+  "endpoint": "fal-ai/nano-banana-2/edit",
+  "request_id": "01a10b01-5ce4-7061-a926-c77e6f24b739",
+  "submitted_at": "2026-10-05T07:40:00.291Z",
+  "completed_at": "2026-10-05T07:40:17.795Z",
+  "prompt": "Isolate the the square flush-mount crystal ceiling chandelier: a chrome square frame with a white base plate, many hanging clear glass rods around all four sides, and a row of round clear crystal balls underneath. Show the entire fixture, seen from the side, slightly from below from this image. Reproduce it exactly as shown -- same colors, materials, and proportions. White background, centered, tight crop, studio lighting. No other objects, no scene, no people, no text, no shadows on the ground. Isolate the object and remove all clustered, adjacent, overlapping, or items resting on the target object. Create a clean render of that one single object that is true to the source image."
+ },
+ "model": {
+  "endpoint": "fal-ai/hunyuan3d-v3/image-to-3d",
+  "request_id": "01a10b03-45a7-7002-a96c-9d37965dfb2d",
+  "submitted_at": "2026-10-05T07:42:05.517Z",
+  "completed_at": "2026-10-05T07:47:30.963Z",
+  "input": {
+   "generate_type": "Normal",
+   "enable_pbr": true,
+   "face_count": 50000,
+   "input_image_url": "[stripped]"
+  }
+ },
+ "name": "square crystal chandelier",
+ "description": "the square flush-mount crystal ceiling chandelier: a chrome square frame with a white base plate, many hanging clear glass rods around all four sides, and a row of round clear crystal balls underneath. Show the entire fixture, seen from the side, slightly from below",
+ "source_images": [
+  "0-chandelier.jpg"
+ ]
+}

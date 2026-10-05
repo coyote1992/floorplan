@@ -2,6 +2,10 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 
 /* ------------------------------------------------------------------ tuning */
 const EYE = 1.6;               // eye height in walk mode (m)
@@ -29,6 +33,14 @@ const camOrbit = new THREE.PerspectiveCamera(38, 1, 0.1, 5000);
 const camPlan = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 100);
 let camera = camOrbit;
 
+// walk mode on desktop: a soft glow around the bright windows and sun patches, like a photograph
+const BLOOM = !matchMedia('(pointer: coarse)').matches;
+const composer = new EffectComposer(renderer, new THREE.WebGLRenderTarget(1, 1, { type: THREE.HalfFloatType, samples: 4 }));
+const renderPass = new RenderPass(scene, camWalk);
+composer.addPass(renderPass);
+composer.addPass(new UnrealBloomPass(new THREE.Vector2(256, 256), 0.22, 0.55, 1.05));
+composer.addPass(new OutputPass());
+
 const orbit = new OrbitControls(camOrbit, canvas);
 orbit.enableDamping = true;
 orbit.dampingFactor = 0.08;
@@ -52,6 +64,8 @@ const S = {
 };
 let ceilings = [], roomMeshes = {}, viewTex = null, bgColor = new THREE.Color();
 let walls = [], furniture = [], passages = [];
+let phys = null, grabbing = null, dynamicRoots = [], meshColliderRoots = [];   // interactive objects (physics.js)
+const pickRay = new THREE.Raycaster();
 
 /* ------------------------------------------------------------------ helpers */
 function cssColor(name) {
@@ -140,6 +154,10 @@ function disposeFlat() {
   walls = [];
   furniture = [];
   passages = [];
+  if (phys) phys.dispose();
+  phys = null;
+  grabbing = null;
+  $('tidyBtn').hidden = true;
   S.room = null;
   S.tween = null;
   S.hold = null;
@@ -206,6 +224,18 @@ async function loadFlat(id, mode) {
   setLoading(1, 'Ready');
   $('loading').hidden = true;
   setMode(MODES.includes(mode) ? mode : 'overview', true);
+  if (dynamicRoots.length) startPhysics(seq).catch(e => console.warn('Interactive objects are unavailable:', e));
+}
+
+// load the physics engine only for flats with movable pieces, after the flat is on screen
+async function startPhysics(seq) {
+  const { createPhysics } = await import('./physics.js');
+  if (seq !== loadSeq) return;
+  const p = await createPhysics({ scene, data: S.data, dynamic: dynamicRoots, meshColliders: meshColliderRoots });
+  if (seq !== loadSeq) { p.dispose(); return; }
+  p.settleNow();
+  phys = p;
+  updateHint();
 }
 
 // Fetch the model ourselves (with progress) so that nothing is requested from a data: URL;
@@ -266,16 +296,23 @@ function toGlb(bytes) {
 }
 
 function prepare(root, lightmaps) {
-  const inherit = ['room', 'lightmap', 'kind', 'solid'];
+  const inherit = ['room', 'lightmap', 'kind', 'solid', 'lmkey'];
+  dynamicRoots = [];
+  meshColliderRoots = [];
+  root.traverse(o => {
+    if (o.userData.dynamic) dynamicRoots.push(o);
+    else if (o.userData.collider === 'mesh') meshColliderRoots.push(o);
+  });
   root.traverse(o => {
     if (o.parent) for (const k of inherit) if (o.userData[k] === undefined && o.parent.userData[k] !== undefined) o.userData[k] = o.parent.userData[k];
     if (!o.isMesh) return;
     const room = o.userData.room || null;
     const m = o.material.clone();
     o.material = m;
-    const lm = room && o.userData.lightmap && lightmaps[room] && o.geometry.attributes.uv1;
+    const lmKey = o.userData.lmkey || room;     // generated pieces have a lightmap of their own
+    const lm = lmKey && o.userData.lightmap && lightmaps[lmKey] && o.geometry.attributes.uv1;
     if (lm) {
-      m.lightMap = lightmaps[room];
+      m.lightMap = lightmaps[lmKey];
       m.lightMapIntensity = (S.data.lmMax || 4) * Math.PI * LM_GAIN;
       patchLightmapped(m);
     }
@@ -458,6 +495,12 @@ const HINTS = {
   plan: 'Drag to pan · scroll or pinch to zoom · click a room to walk in',
 };
 
+function updateHint() {
+  let h = HINTS[S.mode];
+  if (S.mode === 'walk' && phys) h += matchMedia('(pointer: coarse)').matches ? ' · drag the cushions and chairs' : ' · drag things to pick them up, let go to throw';
+  $('hint').innerHTML = h;
+}
+
 function setMode(mode, instant) {
   S.mode = mode;
   document.querySelectorAll('.modes button').forEach(b => {
@@ -470,7 +513,7 @@ function setMode(mode, instant) {
   for (const c of ceilings) c.visible = mode === 'walk';
   camera = mode === 'walk' ? camWalk : mode === 'plan' ? camPlan : camOrbit;
   scene.background = mode === 'walk' && viewTex ? viewTex : bgColor;
-  $('hint').innerHTML = HINTS[mode];
+  updateHint();
   $('joy').hidden = !(mode === 'walk' && matchMedia('(pointer: coarse)').matches);
   $('planBtn').textContent = mode === 'plan' ? 'Back to the overview' : 'Show the floor plan';
   if (mode === 'walk' && S.pos.lengthSq() === 0) placeAt(S.data.rooms.find(r => r.id === 'living') || S.data.rooms[0], true);
@@ -600,6 +643,7 @@ $('resetBtn').addEventListener('click', () => {
   else placeAt(S.room || S.data.rooms[0]);
 });
 $('planBtn').addEventListener('click', () => setMode(S.mode === 'plan' ? 'overview' : 'plan'));
+$('tidyBtn').addEventListener('click', () => { if (phys) phys.reset(); });
 function collapseSheet(c) {
   $('side').classList.toggle('collapsed', c);
   $('sheetToggle').setAttribute('aria-expanded', String(!c));
@@ -622,6 +666,12 @@ canvas.addEventListener('pointerdown', e => {
   canvas.setPointerCapture(e.pointerId);
   const r = canvas.getBoundingClientRect();
   const joy = e.pointerType === 'touch' && e.clientX - r.left < r.width * 0.42 && e.clientY - r.top > r.height * 0.35;
+  if (!joy && phys && (e.pointerType !== 'mouse' || e.button === 0) && !grabbing) {
+    grabbing = { id: e.pointerId, ndc: pointerNdc(e) };
+    pickRay.setFromCamera(grabbing.ndc, camWalk);
+    if (phys.beginGrab(pickRay)) { canvas.style.cursor = 'grabbing'; return; }
+    grabbing = null;
+  }
   pointers.set(e.pointerId, { x: e.clientX, y: e.clientY, sx: e.clientX, sy: e.clientY, joy, moved: 0 });
   if (joy) {
     joyEl.style.left = (e.clientX - r.left - 58) + 'px';
@@ -633,6 +683,8 @@ canvas.addEventListener('pointermove', e => {
   const p = pointers.get(e.pointerId);
   if (S.mode !== 'walk') return;
   const locked = document.pointerLockElement === canvas;
+  if (grabbing && e.pointerId === grabbing.id && !locked) { grabbing.ndc = pointerNdc(e); return; }
+  if (!p && !locked && phys && e.pointerType === 'mouse' && !grabbing) hoverCursor(e);
   if (!p && !locked) return;
   const dx = locked ? e.movementX : e.clientX - p.x;
   const dy = locked ? e.movementY : e.clientY - p.y;
@@ -650,6 +702,11 @@ canvas.addEventListener('pointermove', e => {
   S.tween = null;
 });
 function endPointer(e) {
+  if (grabbing && e.pointerId === grabbing.id) {
+    phys.endGrab();
+    grabbing = null;
+    canvas.style.cursor = '';
+  }
   const p = pointers.get(e.pointerId);
   if (!p) return;
   pointers.delete(e.pointerId);
@@ -663,6 +720,24 @@ function endPointer(e) {
 }
 canvas.addEventListener('pointerup', endPointer);
 canvas.addEventListener('pointercancel', endPointer);
+canvas.addEventListener('wheel', e => {
+  if (S.mode !== 'walk' || !grabbing || !phys) return;
+  e.preventDefault();
+  phys.reach(-e.deltaY * 0.0015);
+}, { passive: false });
+function pointerNdc(e) {
+  if (document.pointerLockElement === canvas) return new THREE.Vector2(0, 0);
+  const r = canvas.getBoundingClientRect();
+  return new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+}
+let hoverAt = 0;
+function hoverCursor(e) {
+  const now = performance.now();
+  if (now - hoverAt < 70) return;
+  hoverAt = now;
+  pickRay.setFromCamera(pointerNdc(e), camWalk);
+  canvas.style.cursor = phys.pick(pickRay) ? 'grab' : '';
+}
 canvas.addEventListener('dblclick', () => {
   if (S.mode !== 'walk') return;
   try { const pr = canvas.requestPointerLock(); if (pr && pr.catch) pr.catch(() => {}); } catch (e) { /* not available */ }
@@ -687,6 +762,8 @@ canvas.addEventListener('click', e => {
 function resize() {
   const w = stage.clientWidth, h = stage.clientHeight;
   renderer.setSize(w, h, false);
+  composer.setPixelRatio(renderer.getPixelRatio());
+  composer.setSize(w, h);
   camWalk.aspect = camOrbit.aspect = w / h;
   camWalk.updateProjectionMatrix();
   camOrbit.updateProjectionMatrix();
@@ -711,10 +788,18 @@ function frame(now) {
     if (S.mode === 'walk') stepWalk(dt);
     else if (S.mode === 'overview') orbit.update();
     else planCtl.update();
+    if (phys) {
+      let aim = null;
+      if (grabbing) { pickRay.setFromCamera(grabbing.ndc, camWalk); aim = pickRay.ray; }
+      phys.step(dt, S.mode === 'walk' && !S.tween ? S.pos : null, aim);
+      const tidy = !(S.mode === 'walk' && phys.moved);
+      if ($('tidyBtn').hidden !== tidy) $('tidyBtn').hidden = tidy;
+    }
     updateMini();
     updateTags();
   }
-  renderer.render(scene, camera);
+  if (BLOOM && S.mode === 'walk') composer.render(dt);
+  else renderer.render(scene, camera);
   requestAnimationFrame(frame);
 }
 function stepWalk(dt) {
@@ -742,7 +827,9 @@ function stepWalk(dt) {
     const a = 1 - Math.exp(-dt * 10);
     S.vel.x += (tx - S.vel.x) * a;
     S.vel.y += (tz - S.vel.y) * a;
-    moveBy(S.vel.x * dt, S.vel.y * dt);
+    let mx = S.vel.x * dt, mz = S.vel.y * dt;
+    if (phys) [mx, mz] = phys.walk(mx, mz);   // chairs and cushions in the way get pushed
+    moveBy(mx, mz);
   }
   camWalk.position.set(S.pos.x, EYE, S.pos.z);
   camWalk.rotation.set(S.pitch, S.yaw, 0);
@@ -769,4 +856,4 @@ addEventListener('hashchange', () => {
 });
 boot().catch(showError);
 
-window.flat = { S, setMode, goRoom, moveBy, renderer, scene, loadFlat, get current() { return current; } };
+window.flat = { S, setMode, goRoom, moveBy, renderer, scene, loadFlat, get current() { return current; }, get phys() { return phys; }, get camera() { return camera; } };

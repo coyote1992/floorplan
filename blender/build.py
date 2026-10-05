@@ -660,6 +660,106 @@ def import_model(folder, name, room, loc, rz=0.0, height=None, scale=None, light
     return ob
 
 
+# ---------------------------------------------------------------- pieces generated from the photos (image-blaster)
+GEN_DIR = os.path.join(ROOT, 'gen', FLAT)
+_gen_meshes = {}
+
+
+def has_gen(oid):
+    return os.path.exists(os.path.join(GEN_DIR, oid + '.glb'))
+
+
+def gen_mesh(oid, size=None, height=None, width=None, depth=None, origin='bottom'):
+    """Mesh of a piece generated with FAL Hunyuan3D from a photo cut-out (slimmed by slim_gen.py).
+    The models face -Y like ours. size=(w, d, h) fits measured dimensions; height/width/depth scale uniformly.
+    origin: 'bottom' (centre of the base), 'top' (ceiling fixtures) or 'center' (loose objects)."""
+    key = (oid, size, height, width, depth, origin)
+    if key in _gen_meshes:
+        return _gen_meshes[key]
+    before = set(bpy.data.objects)
+    bpy.ops.import_scene.gltf(filepath=os.path.join(GEN_DIR, oid + '.glb'))
+    new = [o for o in bpy.data.objects if o not in before]
+    meshes = [o for o in new if o.type == 'MESH']
+    bpy.context.view_layer.update()
+    for o in meshes:
+        o.data.transform(o.matrix_world)
+        o.parent = None
+        o.matrix_world = Matrix.Identity(4)
+    if len(meshes) > 1:
+        with bpy.context.temp_override(active_object=meshes[0], object=meshes[0], selected_objects=meshes,
+                                       selected_editable_objects=meshes):
+            bpy.ops.object.join()
+    me = meshes[0].data
+    for o in new:
+        if o.name in bpy.data.objects:
+            bpy.data.objects.remove(o)
+    co = [v.co for v in me.vertices]
+    lo = Vector((min(c.x for c in co), min(c.y for c in co), min(c.z for c in co)))
+    hi = Vector((max(c.x for c in co), max(c.y for c in co), max(c.z for c in co)))
+    dim = hi - lo
+    if size:
+        k = Vector((size[0] / dim.x, size[1] / dim.y, size[2] / dim.z))
+    else:
+        u = height / dim.z if height else width / dim.x if width else depth / dim.y if depth else 1.0
+        k = Vector((u, u, u))
+    oz = {'bottom': lo.z, 'top': hi.z, 'center': (lo.z + hi.z) / 2}[origin]
+    me.transform(Matrix.Diagonal((k.x, k.y, k.z, 1)) @ Matrix.Translation((-(lo.x + hi.x) / 2, -(lo.y + hi.y) / 2, -oz)))
+    me.shade_smooth()
+    me.name = 'gen_' + oid
+    for m in me.materials:
+        m['generated'] = True
+    _gen_meshes[key] = me
+    return me
+
+
+def gen_place(me, name, room, u, v, facing='S', z=0.0, i=0, rz=None, tilt=0.0, solid=False, lightmap=True, props=None):
+    x, y = R(room, u, v, i)
+    ob = bpy.data.objects.new(name, me)
+    ob.location = (x, y, z)
+    ob.rotation_euler = (tilt, 0, FACING[facing] if rz is None else rz)
+    coll('decor').objects.link(ob)
+    ob['room'] = room
+    ob['lightmap'] = bool(lightmap)
+    ob['kind'] = 'decor'
+    if solid:
+        ob['solid'] = 1
+    for k, val in (props or {}).items():
+        ob[k] = val
+    return ob
+
+
+def settle(ob, gap=0.003):
+    """Rest a loose piece on whatever is below it (floor, sofa seat, table top)."""
+    dg = bpy.context.evaluated_depsgraph_get()
+    ob.location.z = -100.0
+    bpy.context.view_layer.update()
+    dg.update()
+    pts = [ob.matrix_world @ Vector(c) for c in ob.bound_box]
+    lo_z = min(p.z for p in pts)
+    xs = [p.x for p in pts]
+    ys = [p.y for p in pts]
+    top = 0.0
+    for fx in (0.2, 0.5, 0.8):
+        for fy in (0.2, 0.5, 0.8):
+            o = Vector((min(xs) + (max(xs) - min(xs)) * fx, min(ys) + (max(ys) - min(ys)) * fy, 1.5))   # below lamps
+            hit, loc, *_ = scene.ray_cast(dg, o, Vector((0, 0, -1)))
+            if hit:
+                top = max(top, loc.z)
+    ob.location.z = top - (lo_z + 100.0) + gap
+    bpy.context.view_layer.update()
+    return ob
+
+
+def dynamic(ob, mass, **kw):
+    """Mark a piece as movable in the viewer: physics body, not in the baked light."""
+    ob['dynamic'] = True
+    ob['mass'] = mass
+    ob['lightmap'] = False
+    for k, v in kw.items():
+        ob[k] = v
+    return ob
+
+
 def shrink_images(ob):
     """Swap the imported model's 1k textures for 512 px (colour) / 256 px (data) copies."""
     for m in ob.data.materials:
@@ -826,7 +926,9 @@ def write_scene_json():
             pts = [o.matrix_world @ Vector(c) for c in o.bound_box]
             xs = [p.x for p in pts]
             ys = [p.y for p in pts]
-            furn.append([round(min(xs), 3), round(-max(ys), 3), round(max(xs), 3), round(-min(ys), 3), o.name])
+            zs = [p.z for p in pts]
+            furn.append([round(min(xs), 3), round(-max(ys), 3), round(max(xs), 3), round(-min(ys), 3), o.name,
+                         round(min(zs), 3), round(max(zs), 3)])
     bx0, by0, bx1, by1 = flat.BOUNDS_PX
     data = dict(id=FLAT, scale=S, ceiling=H, netArea=round(net_area(), 1), rooms=rooms, walls=cols, furniture=furn,
                 bounds=[X(bx0), -Y(by0), X(bx1), -Y(by1)], viewRotation=flat.VIEW_ROTATION, **flat.META,

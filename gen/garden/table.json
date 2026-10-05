@@ -1,0 +1,33 @@
+{
+ "id": "table",
+ "faces_generated": 49508,
+ "faces": 7999,
+ "texture_px": [
+  1024,
+  512
+ ],
+ "image": {
+  "endpoint": "fal-ai/nano-banana-2/edit",
+  "request_id": "01a10b01-5c1a-78c3-a14d-923cd6072285",
+  "submitted_at": "2026-10-05T07:40:00.112Z",
+  "completed_at": "2026-10-05T07:40:17.173Z",
+  "prompt": "Isolate the the white rectangular dining table with a thin white top and four square white legs. Remove both chairs, the green cushion and the placemats. Show the whole table with all four legs visible from this image. Reproduce it exactly as shown -- same colors, materials, and proportions. White background, centered, tight crop, studio lighting. No other objects, no scene, no people, no text, no shadows on the ground. Isolate the object and remove all clustered, adjacent, overlapping, or items resting on the target object. Create a clean render of that one single object that is true to the source image."
+ },
+ "model": {
+  "endpoint": "fal-ai/hunyuan3d-v3/image-to-3d",
+  "request_id": "01a10b03-45a5-7eb2-a8ad-50718bdfe71d",
+  "submitted_at": "2026-10-05T07:42:05.493Z",
+  "completed_at": "2026-10-05T07:45:42.452Z",
+  "input": {
+   "generate_type": "Normal",
+   "enable_pbr": true,
+   "face_count": 50000,
+   "input_image_url": "[stripped]"
+  }
+ },
+ "name": "white dining table",
+ "description": "the white rectangular dining table with a thin white top and four square white legs. Remove both chairs, the green cushion and the placemats. Show the whole table with all four legs visible",
+ "source_images": [
+  "0-table.jpg"
+ ]
+}

@@ -1,0 +1,33 @@
+{
+ "id": "cushion-orange",
+ "faces_generated": 50000,
+ "faces": 5999,
+ "texture_px": [
+  1024,
+  512
+ ],
+ "image": {
+  "endpoint": "fal-ai/nano-banana-2/edit",
+  "request_id": "01a10b01-5be7-7811-b48d-af868627b8cf",
+  "submitted_at": "2026-10-05T07:40:00.148Z",
+  "completed_at": "2026-10-05T07:40:11.762Z",
+  "prompt": "Isolate the the square ochre-orange suede throw pillow, standing upright, seen from the front, the whole pillow with its slightly puffy shape from this image. Reproduce it exactly as shown -- same colors, materials, and proportions. White background, centered, tight crop, studio lighting. No other objects, no scene, no people, no text, no shadows on the ground. Isolate the object and remove all clustered, adjacent, overlapping, or items resting on the target object. Create a clean render of that one single object that is true to the source image."
+ },
+ "model": {
+  "endpoint": "fal-ai/hunyuan3d-v3/image-to-3d",
+  "request_id": "01a10b03-46d8-7220-b0db-113612f1eab4",
+  "submitted_at": "2026-10-05T07:42:05.657Z",
+  "completed_at": "2026-10-05T07:47:31.160Z",
+  "input": {
+   "generate_type": "Normal",
+   "enable_pbr": true,
+   "face_count": 50000,
+   "input_image_url": "[stripped]"
+  }
+ },
+ "name": "orange square throw pillow",
+ "description": "the square ochre-orange suede throw pillow, standing upright, seen from the front, the whole pillow with its slightly puffy shape",
+ "source_images": [
+  "0-cushion-orange.jpg"
+ ]
+}

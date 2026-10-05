@@ -1,0 +1,33 @@
+{
+ "id": "chair",
+ "faces_generated": 49990,
+ "faces": 13999,
+ "texture_px": [
+  1024,
+  1024
+ ],
+ "image": {
+  "endpoint": "fal-ai/nano-banana-2/edit",
+  "request_id": "01a10b01-5cd3-7f60-85db-54d598348d8c",
+  "submitted_at": "2026-10-05T07:40:00.324Z",
+  "completed_at": "2026-10-05T07:40:17.942Z",
+  "prompt": "Isolate the the dining chair: navy blue upholstered curved backrest and seat, light beech wood frame, armless, four straight wooden legs with side stretchers. Remove the sage-green seat cushion and the table. Show the whole chair including all four legs, three-quarter front view from this image. Reproduce it exactly as shown -- same colors, materials, and proportions. White background, centered, tight crop, studio lighting. No other objects, no scene, no people, no text, no shadows on the ground. Isolate the object and remove all clustered, adjacent, overlapping, or items resting on the target object. Create a clean render of that one single object that is true to the source image."
+ },
+ "model": {
+  "endpoint": "fal-ai/hunyuan3d-v3/image-to-3d",
+  "request_id": "01a10b03-45f7-76d0-802e-2bebee905a95",
+  "submitted_at": "2026-10-05T07:42:05.548Z",
+  "completed_at": "2026-10-05T07:46:03.783Z",
+  "input": {
+   "generate_type": "Normal",
+   "enable_pbr": true,
+   "face_count": 50000,
+   "input_image_url": "[stripped]"
+  }
+ },
+ "name": "navy upholstered dining chair",
+ "description": "the dining chair: navy blue upholstered curved backrest and seat, light beech wood frame, armless, four straight wooden legs with side stretchers. Remove the sage-green seat cushion and the table. Show the whole chair including all four legs, three-quarter front view",
+ "source_images": [
+  "0-chair.jpg"
+ ]
+}

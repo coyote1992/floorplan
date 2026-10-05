@@ -149,12 +149,30 @@ def furnish(b):
     # ---------------- living room 4.05 x 4.72, windows south, shelving wall north
     L = 'living'
     place(F2.wall_unit(3.70, 2.50, 0.36), 'wall_unit', L, 2.025, 0.18, 'S', solid=True)
-    place(F2.sofa_corner(2.70, 0.95, 1.62), 'sofa', L, 0.475, 2.70, 'E', solid=True)
+    # pieces generated from the photos with image-blaster (FAL: nano-banana cut-out -> Hunyuan3D), see gen/garden/;
+    # without them the hand-modelled versions are used
+    if has_gen('sofa'):
+        gen_place(gen_mesh('sofa', size=(2.70, 1.62, 0.86)), 'sofa', L, 0.82, 2.70, 'E', solid=True,
+                  props={'collider': 'mesh', 'lm_own': 1024})
+    else:
+        place(F2.sofa_corner(2.70, 0.95, 1.62), 'sofa', L, 0.475, 2.70, 'E', solid=True)
     place(F2.wall_clock(0.72), 'wall_clock', L, 0.004, 2.72, 'E', z=1.88)
-    place(F2.dining_table_white(1.30, 0.80), 'dining_table', L, 2.55, 1.45, 'S', solid=True)
-    for i, (u, v, f) in enumerate(((2.25, 0.86, 'S'), (2.85, 0.86, 'S'), (2.25, 2.06, 'N'), (2.85, 2.06, 'N'))):
-        place(F2.conf_chair(), f'chair_{i}', L, u, v, f)
-    place(F2.chandelier(0.42, 0.55), 'chandelier', L, 2.0, 2.45, z=H)
+    place(F2.dining_table_white(1.30, 0.80), 'dining_table', L, 2.55, 1.45, 'S', solid=True, props={'collider': 'mesh'})
+    for i, (u, v, f) in enumerate(((2.25, 0.81, 'S'), (2.85, 0.81, 'S'), (2.25, 2.11, 'N'), (2.85, 2.11, 'N'))):
+        if has_gen('chair'):
+            dynamic(settle(gen_place(gen_mesh('chair', height=0.86, origin='center'), f'chair_{i}', L, u, v, f, lightmap=False)), 5.5)
+        else:
+            place(F2.conf_chair(), f'chair_{i}', L, u, v, f)
+    if has_gen('chandelier'):
+        gen_place(gen_mesh('chandelier', width=0.48, origin='top'), 'chandelier', L, 2.0, 2.45, z=H, lightmap=False)
+    else:
+        place(F2.chandelier(0.42, 0.55), 'chandelier', L, 2.0, 2.45, z=H)
+    # loose things on the sofa: pick them up, throw them around
+    for oid, nm, kw, u, v, tilt, mass in (('cushion-orange', 'cushion_orange', dict(width=0.46), 0.42, 3.72, -0.30, 0.45),
+                                          ('cushion-striped', 'cushion_striped', dict(width=0.52), 0.42, 2.02, -0.30, 0.40),
+                                          ('blanket-yellow', 'blanket_yellow', dict(depth=0.40), 0.80, 3.30, 0.0, 0.60)):
+        if has_gen(oid):
+            dynamic(settle(gen_place(gen_mesh(oid, origin='center', **kw), nm, L, u, v, 'E', tilt=tilt, lightmap=False)), mass)
     ob = place(F2.runner(0.62, 2.60), 'runner_hall_side', L, 3.65, 2.00, 'S')
     ob = place(F2.runner(1.25, 0.55), 'runner_garden', L, 3.40, 4.38, 'S')
     place(F2.runner(0.95, 0.55, 'rug_white'), 'rug_sofa', L, 1.62, 2.60, 'E')
@@ -169,9 +187,12 @@ def furnish(b):
     place(F2.picture(0.30, 0.40, 'art_lemons_blue'), 'print_lemons_blue', L, 4.038, 2.05, 'W', z=1.40)
     for nm in ('print_lemons', 'sign_home', 'print_lemons_blue'):
         fit_uv(bpy.data.objects[nm], 'xz')
-    x, y = R(L, 0.30, 4.40)
-    place(F.pot(0.18, 0.32, 'terracotta'), 'pot_dracaena', L, 0.30, 4.40)
-    import_model('pachira_aquatica_01', 'plant_dracaena', L, (x, y, 0.29), rz=1.1, height=1.55, keep=['_c'])
+    if has_gen('dracaena'):
+        gen_place(gen_mesh('dracaena', height=1.85), 'plant_dracaena', L, 0.38, 4.30, 'E', lightmap=False)
+    else:
+        x, y = R(L, 0.30, 4.40)
+        place(F.pot(0.18, 0.32, 'terracotta'), 'pot_dracaena', L, 0.30, 4.40)
+        import_model('pachira_aquatica_01', 'plant_dracaena', L, (x, y, 0.29), rz=1.1, height=1.55, keep=['_c'])
     for i, u in enumerate((0.70, 1.30)):
         x, y = R(L, u, 4.80)
         import_model('potted_plant_04', f'plant_sill_{i}', L, (x, y, 0.86), rz=i, height=0.24, drop=['ground'])

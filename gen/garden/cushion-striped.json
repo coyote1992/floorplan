@@ -1,0 +1,33 @@
+{
+ "id": "cushion-striped",
+ "faces_generated": 50000,
+ "faces": 6000,
+ "texture_px": [
+  1024,
+  512
+ ],
+ "image": {
+  "endpoint": "fal-ai/nano-banana-2/edit",
+  "request_id": "01a10b01-5be1-7511-bbab-2044d5512fc7",
+  "submitted_at": "2026-10-05T07:40:00.108Z",
+  "completed_at": "2026-10-05T07:40:17.152Z",
+  "prompt": "Isolate the the rectangular throw pillow with vertical stripes in teal, pale blue, beige, white and rust, seen from the front, the whole pillow from this image. Reproduce it exactly as shown -- same colors, materials, and proportions. White background, centered, tight crop, studio lighting. No other objects, no scene, no people, no text, no shadows on the ground. Isolate the object and remove all clustered, adjacent, overlapping, or items resting on the target object. Create a clean render of that one single object that is true to the source image."
+ },
+ "model": {
+  "endpoint": "fal-ai/hunyuan3d-v3/image-to-3d",
+  "request_id": "01a10b03-4622-71f2-8fff-7c17e50980da",
+  "submitted_at": "2026-10-05T07:42:05.583Z",
+  "completed_at": "2026-10-05T07:45:53.220Z",
+  "input": {
+   "generate_type": "Normal",
+   "enable_pbr": true,
+   "face_count": 50000,
+   "input_image_url": "[stripped]"
+  }
+ },
+ "name": "striped rectangular throw pillow",
+ "description": "the rectangular throw pillow with vertical stripes in teal, pale blue, beige, white and rust, seen from the front, the whole pillow",
+ "source_images": [
+  "0-cushion-striped.jpg"
+ ]
+}
