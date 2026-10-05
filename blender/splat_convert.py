@@ -77,7 +77,7 @@ A = np.stack([right, up, -fwd])          # rows: new x, y, z in old coordinates
 # floor: low percentile of the heights of solid splats near the cameras; scale from the photo height
 h = pos @ up
 near = np.linalg.norm((pos - C.mean(0)) - np.outer(h - C.mean(0) @ up, up), axis=1)
-solid = alpha > min(0.5, np.percentile(alpha, 70))
+solid = alpha >= min(0.5, np.percentile(alpha, 70))     # >=: right after an opacity reset every splat is equally faint
 core = solid & (near < np.percentile(near[solid], 60))
 floor, ceil = np.percentile(h[core], 1.5), np.percentile(h[core], 98.5)
 cam_h = C @ up - floor
