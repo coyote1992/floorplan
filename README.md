@@ -116,9 +116,13 @@ the photo viewpoints and can compare each with its photo (divider), and you can 
 | Step | Tool | Notes |
 |---|---|---|
 | Camera positions from the photos | [COLMAP](https://colmap.github.io) via `pycolmap` (CPU) | 8 of the 11 living-room photos register; the 3 looking east share too little with the rest |
-| Training | [OpenSplat](https://github.com/pierotofy/OpenSplat) built for CPU (libtorch) | 1008 × 756 px, base colour only (no view-dependent terms) |
+| Training | [OpenSplat](https://github.com/pierotofy/OpenSplat) built for CPU (libtorch) | 6,000 steps at about 1000 × 750 px, base colour only (no view-dependent terms); about 3 CPU hours |
 | Upright, metres, web format | `blender/splat_convert.py` | `.splat` file (32 bytes a splat) and the photo cameras |
 | Viewer | `splat.html`, `splat.js`: [Spark](https://sparkjs.dev) 2.3 on three.js 0.180 (both vendored, MIT) | separate from the walkthrough's three.js r170 |
+
+The committed splat was converted with
+`python3 blender/splat_convert.py living.ply cameras.json assets/garden/splat --ceiling 2.95 --needle 12 --maxsize 0.6`
+(the caps shorten needle-shaped splats and drop oversized ones, which only look right from their own photo).
 
 nerfstudio's `splatfacto` and `gsplat` need a CUDA GPU, which this build environment does not have; with a GPU they are the
 better trainers and the viewer stays the same. Eight photos is very few: the splat is convincing at and near the photo

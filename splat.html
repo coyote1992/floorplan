@@ -167,7 +167,7 @@ h2 { font: 500 11px/1 var(--f-data); letter-spacing: .14em; text-transform: uppe
         stays recognisable but softens. Further away (try free roam), whatever the photos never saw (behind the sofa, under
         the table, the far side of the room) turns into haze and streaks.</p>
       <p><b>How it was made.</b> Camera positions from the photos with COLMAP, then trained on a CPU with OpenSplat (no GPU in
-        this environment), 6,000 steps at 1008 × 756 px. Only the eight photos that overlap enough could be placed; the three
+        this environment), 6,000 steps at about 1000 × 750 px. Only the eight photos that overlap enough could be placed; the three
         looking east share too little with the rest, so that half of the room is missing.</p>
       <p><b>What would make it walkable.</b> A slow phone video around the whole room (a few hundred overlapping frames)
         trained on a GPU with nerfstudio/gsplat. That fills the gaps and sharpens everything; the viewer stays the same.</p>
