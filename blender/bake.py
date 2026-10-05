@@ -103,6 +103,17 @@ def make_lightmap_uvs(objs, margin):
         o.data.uv_layers.active = o.data.uv_layers['UVMap']
 
 
+def uv_hash(room, objs):
+    """Fingerprint of a room's lightmap UVs: runs that bake one room each (bake_rooms.sh) must lay them out the same."""
+    h = 0.0
+    for i, o in enumerate(sorted(objs, key=lambda o: o.name)):
+        uv = o.data.uv_layers['Lightmap'].data
+        co = np.zeros(len(uv) * 2)
+        uv.foreach_get('uv', co)
+        h += (i + 1) * float(np.dot(co, np.arange(1, len(co) + 1) % 97))
+    print(f'UVHASH {room} {h:.6f}', flush=True)
+
+
 # ---------------------------------------------------------------- bake
 def bake_group(room, objs, size):
     img = bpy.data.images.new('LM_' + room, size, size, float_buffer=True, alpha=False)
@@ -227,6 +238,7 @@ for room in rooms:
         continue
     size = SIZES.get(room, 1024)
     make_lightmap_uvs(objs, margin=6 / size * 1.6)
+    uv_hash(room, objs)
     if SKIP_BAKE:
         continue
     img, p = bake_group(room, objs, size)
@@ -256,6 +268,7 @@ for room in ROOMS:
     objs = group(room)
     if objs and any('Lightmap' not in o.data.uv_layers for o in objs):
         make_lightmap_uvs(objs, margin=6 / SIZES.get(room, 1024) * 1.6)
+        uv_hash(room, objs)
 
 for o in movable:
     o.hide_render = False
