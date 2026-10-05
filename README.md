@@ -96,6 +96,15 @@ flats that have them): walk into them to push them, drag one to pick it up and c
 mouse wheel to hold it nearer or further. "Put things back" resets them. Movable pieces are left out of the baked
 light and get a soft contact shadow instead; generated pieces that stay put get a lightmap of their own.
 
+### Matching the photos (garden flat)
+
+Colours were checked against the photos by sampling the same surfaces (walls, ceiling, floor, wall unit, doors) in the
+photos and in the viewer and comparing their hue ratios: the light colours (sun, ceiling fills), the paint, the floor
+and the woods are set so the walls read white rather than peach, the wall unit pale honey rather than orange, and the
+laminate semi-gloss (soft window reflections). The living room gets a sharper lightmap (3072 px), and the flat uses a
+filmic tone curve (`toneMapping` in its data file). These settings live in `blender/flats/garden.py`, so the river-view
+flat is unchanged.
+
 The views out of the windows are stylised reconstructions, not photographs.
 
 Textures: [ambientCG](https://ambientcg.com) (CC0). Plants and vases: [Poly Haven](https://polyhaven.com) (CC0).

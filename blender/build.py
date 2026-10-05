@@ -85,7 +85,7 @@ def tm(name, key, tile, **kw):
 
 
 M.update({
-    'paint': mat('paint', (0.90, 0.885, 0.86), 0.9),
+    'paint': mat('paint', getattr(flat, 'PAINT', (0.90, 0.885, 0.86)), 0.9),
     'paint_ceiling': mat('paint_ceiling', (0.93, 0.93, 0.92), 0.95),
     'facade': mat('facade', (0.78, 0.75, 0.69), 0.95),
     'walltop': mat('walltop', (0.18, 0.18, 0.19), 0.9),
@@ -829,6 +829,7 @@ def lighting():
     coll('lights').objects.link(so)
     # direction: from plan-north (+Y) slightly from the east, 24 deg above the horizon
     sun.energy = flat.SUN['energy']
+    sun.color = flat.SUN.get('color', sun.color)
     el, az = radians(flat.SUN['elevation']), radians(flat.SUN['azimuth'])
     d = Vector((sin(az) * cos(el), cos(az) * cos(el), sin(el)))   # vector pointing TO the sun
     so.rotation_euler = d.to_track_quat('Z', 'Y').to_euler()
@@ -840,7 +841,7 @@ def lighting():
             l.shape = 'RECTANGLE'
             l.size, l.size_y = sx, sy
             l.energy = w
-            l.color = (1.0, 0.90, 0.78)
+            l.color = getattr(flat, 'FILL_COLOR', (1.0, 0.90, 0.78))
             o = bpy.data.objects.new(f'fill_{key}_{i}', l)
             o.location = (X(px), Y(py), H - 0.02)
             coll('lights').objects.link(o)

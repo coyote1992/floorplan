@@ -177,6 +177,9 @@ async function loadFlat(id, mode) {
   const data = await (await fetch(entry.data)).json();
   if (seq !== loadSeq) return;
   S.data = data;
+  // each flat can choose how light maps to screen colours (a filmic curve reads more like a photograph)
+  renderer.toneMapping = { aces: THREE.ACESFilmicToneMapping, agx: THREE.AgXToneMapping }[data.toneMapping] || THREE.NeutralToneMapping;
+  renderer.toneMappingExposure = data.exposure || EXPOSURE;
   buildUI();
   const texLoader = new THREE.TextureLoader();
   const lightmaps = {};

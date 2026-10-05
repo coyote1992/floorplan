@@ -126,7 +126,11 @@ FILLS = {
     'bath': [(970, 116, 1.5, 1.9, 22)],
     'wc': [(431, 53, 1.6, 0.8, 10)],
 }
-SUN = dict(elevation=30, azimuth=158, energy=45.0)   # from the south-south-east, into the garden windows
+SUN = dict(elevation=30, azimuth=158, energy=45.0,   # from the south-south-east, into the garden windows
+           color=(1.0, 0.93, 0.85))                 # light colours matched to the photos (the walls read white, not peach)
+FILL_COLOR = (1.0, 0.97, 0.93)
+LM_SIZES = {'living': 3072}                           # the showcase room: crisper sun patches and shadows
+PAINT = (0.90, 0.89, 0.875)
 VIEW_ROTATION = 4.7124                              # the panorama is centred on the garden (south)
 OUTSIDE_PROBE = 'living'                              # viewer: light the facade like the living room (neutral)
 VIEWS = {

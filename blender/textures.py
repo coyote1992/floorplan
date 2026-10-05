@@ -259,7 +259,7 @@ def web(path, size, noncolor=False, quality=84):
     return out
 
 
-BIG = ('parquet', 'laminate', 'tile_beige', 'tile_floor', 'tile_bath_floor', 'tile_loggia', 'tile_kitchen', 'tile_bath', 'tile_wc',
+BIG = ('parquet', 'laminate', 'wood_spruce', 'tile_beige', 'tile_floor', 'tile_bath_floor', 'tile_loggia', 'tile_kitchen', 'tile_bath', 'tile_wc',
        'rug_living', 'rug_hall', 'marble', 'floral', 'poster')
 KEEP_ROUGH = ('parquet', 'laminate', 'tile_floor', 'tile_bath_floor', 'tile_loggia', 'marble')
 
@@ -371,12 +371,13 @@ def ensure():
         c = read(src['color'])
         g = c.mean(axis=2, keepdims=True)
         c = g + (c - g) * 0.75
-        write('laminate_color.jpg', np.clip(c * np.array([1.45, 1.30, 1.05]) + 0.06, 0, 1))
+        # pale beech laminate; tone and gloss matched to the photos (semi-gloss: soft window reflections)
+        write('laminate_color.jpg', np.clip(c * np.array([1.33, 1.20, 0.97]) + 0.05, 0, 1))
         r = read(src['rough'])
-        write('laminate_rough.jpg', 0.32 + r * 0.30)
+        write('laminate_rough.jpg', 0.17 + r * 0.18)
     T['laminate'] = dict(color=os.path.join(GEN, 'laminate_color.jpg'), rough=os.path.join(GEN, 'laminate_rough.jpg'), normal=src['normal'])
-    wood('wood_beech', 'Wood049', (1.22, 1.00, 0.76), 0.05, 0.62, 0.7, 0.1)         # beech doors / skirting
-    wood('wood_spruce', 'Wood068', (1.16, 1.06, 0.88), 0.07, 0.75, 0.75, 0.1)       # living-room wall unit (pale spruce)
+    wood('wood_beech', 'Wood049', (1.20, 1.04, 0.90), 0.05, 0.62, 0.7, 0.1)         # beech doors / skirting
+    wood('wood_spruce', 'Wood068', (1.10, 1.10, 1.06), 0.08, 0.50, 0.75, 0.1)       # living-room wall unit (pale honey spruce)
     wood('wood_walnut', 'Wood028', (0.95, 0.82, 0.70), 0.0, 1.0, 0.7, 0.1)          # dark wardrobe / desk
     wood('plywood', 'Wood068', (1.15, 1.08, 0.95), 0.05, 0.7, 0.8, 0.1)             # bathroom cabinet
     wood('worktop_grey', 'Wood058', (0.55, 0.53, 0.52), 0.02, 0.15, 0.6, 0.1)       # kitchen worktop
