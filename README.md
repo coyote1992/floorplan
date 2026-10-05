@@ -107,4 +107,22 @@ flat is unchanged.
 
 The views out of the windows are stylised reconstructions, not photographs.
 
+### Gaussian splat test (garden living room)
+
+`splat.html` shows the garden flat's living room as a [Gaussian splat](https://repo-sam.inria.fr/fungraph/3d-gaussian-splatting/)
+trained from the listing photos: no modelling, the room is a cloud of small coloured blobs fitted to the photos. It opens at
+the photo viewpoints and can compare each with its photo (divider), and you can look and move around freely.
+
+| Step | Tool | Notes |
+|---|---|---|
+| Camera positions from the photos | [COLMAP](https://colmap.github.io) via `pycolmap` (CPU) | 8 of the 11 living-room photos register; the 3 looking east share too little with the rest |
+| Training | [OpenSplat](https://github.com/pierotofy/OpenSplat) built for CPU (libtorch) | 1008 × 756 px, base colour only (no view-dependent terms) |
+| Upright, metres, web format | `blender/splat_convert.py` | `.splat` file (32 bytes a splat) and the photo cameras |
+| Viewer | `splat.html`, `splat.js`: [Spark](https://sparkjs.dev) 2.3 on three.js 0.180 (both vendored, MIT) | separate from the walkthrough's three.js r170 |
+
+nerfstudio's `splatfacto` and `gsplat` need a CUDA GPU, which this build environment does not have; with a GPU they are the
+better trainers and the viewer stays the same. Eight photos is very few: the splat is convincing at and near the photo
+viewpoints and turns to haze where no photo looked. A slow phone video around the room (a few hundred overlapping frames)
+would cover the whole room.
+
 Textures: [ambientCG](https://ambientcg.com) (CC0). Plants and vases: [Poly Haven](https://polyhaven.com) (CC0).
